@@ -34,13 +34,12 @@ function fbwp_find_existing_post($post) {
         }
     }
 
-    $slug = fbwp_slug_for_post($post);
-    if ($slug !== '') {
-        $existing = get_page_by_path($slug, OBJECT, 'post');
-        if ($existing instanceof WP_Post) {
-            return (int) $existing->ID;
-        }
-    }
+    /*
+     * Do not use the generated slug as duplicate identity.
+     * Two legitimate Facebook posts can share the same publication date
+     * and generated title. WordPress will make the second slug unique
+     * automatically (for example by appending -2).
+     */
     return 0;
 }
 
