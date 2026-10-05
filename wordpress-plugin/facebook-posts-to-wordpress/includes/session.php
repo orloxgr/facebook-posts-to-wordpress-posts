@@ -86,6 +86,11 @@ function fbwp_session_transient_key($token) {
     return 'fbwp_' . preg_replace('/[^a-zA-Z0-9_-]/', '', (string) $token);
 }
 
+function fbwp_session_file_path($token) {
+    $token = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) $token);
+    return trailingslashit(fbwp_session_dir()) . 'session-' . $token . '.json';
+}
+
 function fbwp_store_session($decoded, $validation) {
     $token = wp_generate_password(32, false, false);
     $dir = fbwp_session_dir();
@@ -109,7 +114,7 @@ function fbwp_store_session($decoded, $validation) {
         return $at <=> $bt;
     });
 
-    $path = trailingslashit($dir) . 'session-' . $token . '.json';
+    $path = fbwp_session_file_path($token);
     $written = file_put_contents(
         $path,
         wp_json_encode($decoded, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT)
@@ -132,8 +137,29 @@ function fbwp_get_session($token) {
         return new WP_Error('missing_session', 'Missing import session.');
     }
 
-    $session = get_transient(fbwp_session_transient_key($token));
-    if (!is_array($session) || empty($session['path']) || !file_exists($session['path'])) {
+    $key = fbwp_session_transient_key($token);
+    $session = get_transient($key);
+
+    if (!is_array($session) || empty($session['path'])) {
+        $path = fbwp_session_file_path($token);
+        if (!file_exists($path)) {
+            return new WP_Error('expired_session', 'Import session expired. Upload the JSON again.');
+        }
+        $session = array(
+            'path' => $path,
+            'total' => 0,
+            'created' => (int) @filemtime($path),
+        );
+    }
+
+    if (empty($session['path']) || !file_exists($session['path'])) {
+        return new WP_Error('expired_session', 'Import session expired. Upload the JSON again.');
+    }
+
+    $created = !empty($session['created']) ? (int) $session['created'] : (int) @filemtime($session['path']);
+    if ($created > 0 && (time() - $created) > FBWP_SESSION_TTL) {
+        @unlink($session['path']);
+        delete_transient($key);
         return new WP_Error('expired_session', 'Import session expired. Upload the JSON again.');
     }
 
@@ -141,6 +167,12 @@ function fbwp_get_session($token) {
     if (!is_array($decoded) || !isset($decoded['posts']) || !is_array($decoded['posts'])) {
         return new WP_Error('bad_session', 'Stored import session is invalid.');
     }
+
+    $session['total'] = count($decoded['posts']);
+    if (empty($session['created'])) {
+        $session['created'] = $created ?: time();
+    }
+    set_transient($key, $session, FBWP_SESSION_TTL);
 
     return array('meta' => $session, 'data' => $decoded);
 }
