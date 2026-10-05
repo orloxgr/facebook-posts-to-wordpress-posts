@@ -18,7 +18,7 @@ function fbwp_admin_assets($hook) {
     if ($hook !== 'tools_page_facebook-posts-to-wordpress') {
         return;
     }
-    $base = plugin_dir_url(__DIR__ . '/../facebook-posts-to-wordpress.php');
+    $base = plugin_dir_url(dirname(__DIR__) . '/facebook-posts-to-wordpress.php');
     wp_enqueue_style('fbwp-admin', $base . 'assets/admin.css', array(), FBWP_VERSION);
     wp_enqueue_script('fbwp-admin', $base . 'assets/admin.js', array(), FBWP_VERSION, true);
     wp_localize_script('fbwp-admin', 'FBWP_ADMIN', array(
