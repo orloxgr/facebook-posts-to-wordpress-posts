@@ -149,24 +149,41 @@ function fbwp_sideload_media($post_id, $images) {
 }
 
 function fbwp_existing_import_media_ids($post_id) {
-    $ids = array();
+    $candidate_ids = array();
 
     $thumb_id = (int) get_post_thumbnail_id($post_id);
     if ($thumb_id > 0) {
-        $ids[] = $thumb_id;
+        $candidate_ids[] = $thumb_id;
     }
 
     $content = (string) get_post_field('post_content', $post_id);
     if ($content !== '') {
         if (preg_match_all('/"id"\s*:\s*(\d+)/', $content, $matches)) {
-            $ids = array_merge($ids, array_map('intval', $matches[1]));
+            $candidate_ids = array_merge($candidate_ids, array_map('intval', $matches[1]));
         }
         if (preg_match_all('/wp-image-(\d+)/', $content, $matches)) {
-            $ids = array_merge($ids, array_map('intval', $matches[1]));
+            $candidate_ids = array_merge($candidate_ids, array_map('intval', $matches[1]));
         }
     }
 
-    return array_values(array_unique(array_filter(array_map('intval', $ids))));
+    $ids = array();
+    foreach (array_unique(array_filter(array_map('intval', $candidate_ids))) as $media_id) {
+        $attachment = get_post($media_id);
+        if (!$attachment instanceof WP_Post || $attachment->post_type !== 'attachment') {
+            continue;
+        }
+
+        /*
+         * v1.0.4/v1.0.5 media are children of the imported post. Newer
+         * versions are also explicitly marked. This avoids deleting a
+         * manually inserted attachment that merely appears in the content.
+         */
+        if ((int) $attachment->post_parent === (int) $post_id || get_post_meta($media_id, '_fbwp_imported_media', true)) {
+            $ids[] = $media_id;
+        }
+    }
+
+    return array_values(array_unique($ids));
 }
 
 function fbwp_delete_media_ids($media_ids, $keep_ids = array()) {
@@ -179,6 +196,26 @@ function fbwp_delete_media_ids($media_ids, $keep_ids = array()) {
             wp_delete_attachment($media_id, true);
         }
     }
+}
+
+function fbwp_featured_source_size($media_ids) {
+    if (empty($media_ids)) {
+        return '';
+    }
+
+    $media_id = (int) reset($media_ids);
+    $width = (int) get_post_meta($media_id, '_fbwp_source_image_width', true);
+    $height = (int) get_post_meta($media_id, '_fbwp_source_image_height', true);
+
+    if ($width <= 0 || $height <= 0) {
+        $meta = wp_get_attachment_metadata($media_id);
+        if (is_array($meta)) {
+            $width = isset($meta['width']) ? (int) $meta['width'] : 0;
+            $height = isset($meta['height']) ? (int) $meta['height'] : 0;
+        }
+    }
+
+    return ($width > 0 && $height > 0) ? ($width . 'x' . $height) : '';
 }
 
 function fbwp_render_single_content_image($media_id) {
