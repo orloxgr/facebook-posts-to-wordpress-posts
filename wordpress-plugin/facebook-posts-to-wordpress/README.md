@@ -34,6 +34,19 @@ Temporary one-time importer for JSON archives produced by the companion Tampermo
 - Stops on import errors and rolls back a partially imported post.
 - Blocks archives with unresolved dates, duplicate identities, or more than 20 images in a single post.
 
+## Overwrite existing imports
+
+Enable **Overwrite existing imported posts** when the same Facebook archive has already been imported and you want to refresh the existing WordPress posts instead of skipping them.
+
+- Matching is still based only on Facebook source ID, archive key, or fingerprint metadata — never on the generated slug.
+- The existing WordPress post ID is kept.
+- Title, slug, content, date, category, tags, featured image, and imported gallery/body images are refreshed from the JSON.
+- Previously imported images used by that post are removed only after the replacement succeeds.
+- If an overwrite fails, the existing post is restored and newly downloaded replacement images are removed.
+- Leave the checkbox unchecked for the normal skip-existing behavior.
+
+For the current image-quality repair, you can reuse the already exported JSON. The importer first tries a higher-resolution Facebook CDN rendition by removing the feed-only `ctp` resize parameter from the signed image URL. If that candidate is unavailable, it automatically falls back to the original URL stored in the JSON. The import log reports the downloaded featured-image dimensions, for example `featured=1080x1350`.
+
 ## Notes
 
-Facebook CDN image URLs are signed and can expire. Import the JSON as soon as practical after collection.
+Facebook CDN image URLs are signed and can expire. Import or overwrite from the JSON as soon as practical after collection.
