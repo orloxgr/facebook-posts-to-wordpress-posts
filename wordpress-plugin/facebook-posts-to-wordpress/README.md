@@ -16,14 +16,16 @@ Temporary one-time importer for JSON archives produced by the companion Tampermo
 
 - Preserves the source Facebook publication date/time from `dateIso`.
 - Uses the first line or first sentence, whichever ends first, as the WordPress title.
-- Preserves the full Facebook text.
+- Uses the slug format `YYYYMMDD-title` based on the source post date and generated title.
+- Preserves the full Facebook text without adding internal importer comments to the post content.
 - Extracts hashtags and assigns them as WordPress tags.
+- Also adds the source publication year as a WordPress tag, e.g. `2026`.
 - Imports all collected images into the Media Library.
 - Sets the first imported image as the featured image.
 - Adds all imported images to the post content.
 - Uses the selected category and post status.
 - Imports oldest → newest.
-- Uses Facebook ID / archive identity metadata and deterministic slugs for duplicate protection.
+- Uses Facebook ID / archive identity metadata stored in post meta for duplicate protection.
 - Stops on import errors and rolls back a partially imported post.
 - Blocks archives with unresolved dates, duplicate identities, or more than 20 images in a single post.
 
