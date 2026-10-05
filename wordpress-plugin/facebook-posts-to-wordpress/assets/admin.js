@@ -131,6 +131,7 @@
     function resultLine(data) {
         const prefix = data.result === 'skipped' ? 'SKIP' : (data.result === 'overwritten' ? 'OVERWRITE' : 'OK');
         const parts = [`${prefix} #${data.index + 1}/${data.total}`, data.title || '(no title)', `images=${data.images}`, `tags=${data.tags}`];
+        if (data.featuredSize) parts.push(`featured=${data.featuredSize}`);
         if (data.postId) parts.push(`post=${data.postId}`);
         return parts.join(' | ');
     }
