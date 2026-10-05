@@ -48,7 +48,7 @@ function fbwp_render_single_content_image($media_id) {
         return '';
     }
 
-    return "\n<!-- wp:image {\"id\":" . $media_id . ",\"sizeSlug\":\"large\",\"linkDestination\":\"none\"} -->\n" .
+    return "\n<!-- wp:image {\"id\":" . $media_id . ",\"sizeSlug\":\"large\",\"linkDestination\":\"none\",\"lightbox\":{\"enabled\":true}} -->\n" .
         '<figure class="wp-block-image size-large">' . $image_html . "</figure>\n" .
         "<!-- /wp:image -->\n";
 }
@@ -59,6 +59,7 @@ function fbwp_render_content_gallery($media_ids) {
         return '';
     }
 
+    /* Maximum three images per row. */
     $html = "\n<!-- wp:gallery {\"columns\":3,\"linkTo\":\"none\"} -->\n";
     $html .= '<figure class="wp-block-gallery has-nested-images columns-3 is-cropped">' . "\n";
 
@@ -74,7 +75,7 @@ function fbwp_render_content_gallery($media_ids) {
             continue;
         }
 
-        $html .= "<!-- wp:image {\"id\":" . $media_id . ",\"sizeSlug\":\"large\",\"linkDestination\":\"none\"} -->\n";
+        $html .= "<!-- wp:image {\"id\":" . $media_id . ",\"sizeSlug\":\"large\",\"linkDestination\":\"none\",\"lightbox\":{\"enabled\":true}} -->\n";
         $html .= '<figure class="wp-block-image size-large">' . $image_html . "</figure>\n";
         $html .= "<!-- /wp:image -->\n";
     }
