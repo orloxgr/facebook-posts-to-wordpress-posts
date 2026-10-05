@@ -79,6 +79,12 @@ function fbwp_import_one_record($post, $category_name, $status) {
     $title = fbwp_title_from_text(isset($post['text']) ? $post['text'] : '', $date_iso);
     $tags = fbwp_extract_hashtags(isset($post['text']) ? $post['text'] : '');
 
+    $source_ts = strtotime($date_iso);
+    $year_tag = $source_ts ? wp_date('Y', $source_ts, wp_timezone()) : '';
+    if ($year_tag !== '' && !in_array($year_tag, $tags, true)) {
+        $tags[] = $year_tag;
+    }
+
     $post_id = wp_insert_post(array(
         'post_type' => 'post',
         'post_status' => 'draft',
