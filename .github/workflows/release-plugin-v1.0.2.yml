@@ -1,0 +1,44 @@
+name: Release WordPress plugin v1.0.2
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.event.head_commit.message == 'Release WordPress plugin v1.0.2'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Syntax checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          find wordpress-plugin/facebook-posts-to-wordpress -name '*.php' -print0 | xargs -0 -n1 php -l
+          node --check wordpress-plugin/facebook-posts-to-wordpress/assets/admin.js
+
+      - name: Build plugin ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd wordpress-plugin
+          zip -r ../facebook-posts-to-wordpress-v1.0.2.zip facebook-posts-to-wordpress \
+            -x '*/.DS_Store' '*/Thumbs.db'
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create plugin-v1.0.2 \
+            facebook-posts-to-wordpress-v1.0.2.zip \
+            --target "$GITHUB_SHA" \
+            --title "WordPress Plugin v1.0.2" \
+            --notes "Plugin-only release. Converts Facebook hashtags to WordPress tags, removes the trailing hashtag-only block from visible post content, keeps the publication-year tag, and preserves the YYYYMMDD-title slug format."
