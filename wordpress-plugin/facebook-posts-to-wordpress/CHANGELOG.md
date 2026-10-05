@@ -3,7 +3,8 @@
 ## 1.0.4
 
 - Limit imported galleries to a maximum of three columns/images per row.
-- Enable WordPress core lightbox (Expand on click) for imported body and gallery images.
+- Enable WordPress core Image block lightbox (Expand on click) for imported body and gallery images.
+- Preserve gallery lightbox navigation behavior provided by the active WordPress core version.
 
 ## 1.0.3
 
