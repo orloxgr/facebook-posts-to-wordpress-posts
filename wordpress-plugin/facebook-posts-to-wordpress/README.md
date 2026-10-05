@@ -26,6 +26,8 @@ Temporary one-time importer for JSON archives produced by the companion Tampermo
 - With 1 source image: featured image only; no image is appended to the post body.
 - With 2 source images: first is featured, second is appended as a normal image below the text.
 - With 3 or more source images: first is featured, all remaining images are appended below the text as a WordPress gallery.
+- Imported galleries use a maximum of 3 columns/images per row.
+- Body images and gallery images have WordPress core lightbox (Expand on click) enabled.
 - Uses the selected category and post status.
 - Imports oldest → newest.
 - Uses Facebook ID / archive identity metadata stored in post meta for duplicate protection.
