@@ -59,8 +59,8 @@ function fbwp_render_content_gallery($media_ids) {
         return '';
     }
 
-    $html = "\n<!-- wp:gallery {\"linkTo\":\"none\"} -->\n";
-    $html .= '<figure class="wp-block-gallery has-nested-images columns-default is-cropped">' . "\n";
+    $html = "\n<!-- wp:gallery {\"columns\":3,\"linkTo\":\"none\"} -->\n";
+    $html .= '<figure class="wp-block-gallery has-nested-images columns-3 is-cropped">' . "\n";
 
     foreach ($media_ids as $media_id) {
         $image_html = wp_get_attachment_image(
