@@ -34,16 +34,55 @@ function fbwp_find_existing_post($post) {
         }
     }
 
-    /*
-     * Do not use the generated slug as duplicate identity.
-     * Two legitimate Facebook posts can share the same publication date
-     * and generated title. WordPress will make the second slug unique
-     * automatically (for example by appending -2).
-     */
+    /* Never use the generated slug as duplicate identity. */
     return 0;
 }
 
-function fbwp_import_one_record($post, $category_name, $status) {
+function fbwp_snapshot_post($post_id) {
+    $post = get_post($post_id);
+    if (!$post instanceof WP_Post) {
+        return null;
+    }
+
+    return array(
+        'post_title' => $post->post_title,
+        'post_name' => $post->post_name,
+        'post_content' => $post->post_content,
+        'post_status' => $post->post_status,
+        'post_date' => $post->post_date,
+        'post_date_gmt' => $post->post_date_gmt,
+        'categories' => wp_get_post_categories($post_id, array('fields' => 'ids')),
+        'tags' => wp_get_post_tags($post_id, array('fields' => 'ids')),
+        'thumbnail' => (int) get_post_thumbnail_id($post_id),
+    );
+}
+
+function fbwp_restore_post_snapshot($post_id, $snapshot) {
+    if (!is_array($snapshot)) {
+        return;
+    }
+
+    wp_update_post(array(
+        'ID' => (int) $post_id,
+        'post_title' => $snapshot['post_title'],
+        'post_name' => $snapshot['post_name'],
+        'post_content' => $snapshot['post_content'],
+        'post_status' => $snapshot['post_status'],
+        'post_date' => $snapshot['post_date'],
+        'post_date_gmt' => $snapshot['post_date_gmt'],
+        'post_category' => array_map('intval', (array) $snapshot['categories']),
+    ));
+
+    wp_set_post_terms($post_id, array_map('intval', (array) $snapshot['tags']), 'post_tag', false);
+
+    if (!empty($snapshot['thumbnail'])) {
+        set_post_thumbnail($post_id, (int) $snapshot['thumbnail']);
+    } else {
+        delete_post_thumbnail($post_id);
+    }
+}
+
+function fbwp_import_one_record($post, $category_name, $status, $overwrite = false) {
     $date_iso = isset($post['dateIso']) ? trim((string) $post['dateIso']) : '';
     if ($date_iso === '' || strtotime($date_iso) === false) {
         return new WP_Error('unresolved_date', 'Post has no safe date.');
@@ -55,7 +94,7 @@ function fbwp_import_one_record($post, $category_name, $status) {
     }
 
     $existing_id = fbwp_find_existing_post($post);
-    if ($existing_id) {
+    if ($existing_id && !$overwrite) {
         return array(
             'result' => 'skipped',
             'postId' => $existing_id,
@@ -70,6 +109,7 @@ function fbwp_import_one_record($post, $category_name, $status) {
     if (is_wp_error($category_id)) {
         return $category_id;
     }
+
     $date = fbwp_date_parts($date_iso);
     if (is_wp_error($date)) {
         return $date;
@@ -84,46 +124,63 @@ function fbwp_import_one_record($post, $category_name, $status) {
         $tags[] = $year_tag;
     }
 
-    $post_id = wp_insert_post(array(
-        'post_type' => 'post',
-        'post_status' => 'draft',
-        'post_title' => wp_strip_all_tags($title),
-        'post_name' => fbwp_slug_for_post($post),
-        'post_content' => '',
-        'post_date' => $date['local'],
-        'post_date_gmt' => $date['gmt'],
-        'post_category' => array((int) $category_id),
-    ), true);
-    if (is_wp_error($post_id)) {
-        return $post_id;
+    $is_overwrite = $existing_id > 0 && $overwrite;
+    $snapshot = $is_overwrite ? fbwp_snapshot_post($existing_id) : null;
+    $old_media_ids = $is_overwrite ? fbwp_existing_import_media_ids($existing_id) : array();
+
+    if ($is_overwrite) {
+        $post_id = (int) $existing_id;
+    } else {
+        $post_id = wp_insert_post(array(
+            'post_type' => 'post',
+            'post_status' => 'draft',
+            'post_title' => wp_strip_all_tags($title),
+            'post_name' => fbwp_slug_for_post($post),
+            'post_content' => '',
+            'post_date' => $date['local'],
+            'post_date_gmt' => $date['gmt'],
+            'post_category' => array((int) $category_id),
+        ), true);
+        if (is_wp_error($post_id)) {
+            return $post_id;
+        }
     }
 
     $media_ids = array();
+
     try {
         $media_ids = fbwp_sideload_media($post_id, $images);
         if (is_wp_error($media_ids)) {
-            throw new Exception($media_ids->get_error_message());
+            $media_error = $media_ids;
+            $media_ids = array();
+            throw new Exception($media_error->get_error_message());
         }
 
         $updated = wp_update_post(array(
             'ID' => $post_id,
+            'post_title' => wp_strip_all_tags($title),
+            'post_name' => fbwp_slug_for_post($post),
             'post_content' => fbwp_build_content($post, $media_ids),
             'post_status' => ($status === 'draft') ? 'draft' : 'publish',
             'post_date' => $date['local'],
             'post_date_gmt' => $date['gmt'],
+            'post_category' => array((int) $category_id),
         ), true);
         if (is_wp_error($updated)) {
             throw new Exception($updated->get_error_message());
         }
 
-        if (!empty($tags)) {
-            $tag_result = wp_set_post_tags($post_id, $tags, false);
-            if (is_wp_error($tag_result)) {
-                throw new Exception('Tags failed: ' . $tag_result->get_error_message());
-            }
+        $tag_result = wp_set_post_tags($post_id, $tags, false);
+        if (is_wp_error($tag_result)) {
+            throw new Exception('Tags failed: ' . $tag_result->get_error_message());
         }
+
         if (!empty($media_ids)) {
-            set_post_thumbnail($post_id, (int) $media_ids[0]);
+            if (!set_post_thumbnail($post_id, (int) $media_ids[0])) {
+                throw new Exception('Featured image could not be set.');
+            }
+        } else {
+            delete_post_thumbnail($post_id);
         }
 
         $source_id = fbwp_real_source_id($post);
@@ -140,9 +197,14 @@ function fbwp_import_one_record($post, $category_name, $status) {
             update_post_meta($post_id, '_fbwp_source_permalink', esc_url_raw((string) $post['permalink']));
         }
         update_post_meta($post_id, '_fbwp_imported_at', current_time('mysql'));
+        update_post_meta($post_id, '_fbwp_import_version', FBWP_VERSION);
+
+        if ($is_overwrite) {
+            fbwp_delete_media_ids($old_media_ids, $media_ids);
+        }
 
         return array(
-            'result' => 'imported',
+            'result' => $is_overwrite ? 'overwritten' : 'imported',
             'postId' => (int) $post_id,
             'editUrl' => get_edit_post_link($post_id, 'raw'),
             'title' => $title,
@@ -150,10 +212,14 @@ function fbwp_import_one_record($post, $category_name, $status) {
             'tags' => count($tags),
         );
     } catch (Throwable $e) {
-        foreach ($media_ids as $media_id) {
-            wp_delete_attachment((int) $media_id, true);
+        fbwp_delete_media_ids($media_ids);
+
+        if ($is_overwrite) {
+            fbwp_restore_post_snapshot($post_id, $snapshot);
+        } else {
+            wp_delete_post((int) $post_id, true);
         }
-        wp_delete_post((int) $post_id, true);
+
         return new WP_Error('import_failed', $e->getMessage());
     }
 }
