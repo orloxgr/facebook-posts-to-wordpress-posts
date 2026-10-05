@@ -22,8 +22,10 @@ Temporary one-time importer for JSON archives produced by the companion Tampermo
 - Removes the trailing hashtag-only block from the visible post content after converting those hashtags to WordPress tags.
 - Also adds the source publication year as a WordPress tag, e.g. `2026`.
 - Imports all collected images into the Media Library.
-- Sets the first imported image as the featured image.
-- Adds all imported images to the post content.
+- The first imported image is always the featured image and is not repeated inside the post content.
+- With 1 source image: featured image only; no image is appended to the post body.
+- With 2 source images: first is featured, second is appended as a normal image below the text.
+- With 3 or more source images: first is featured, all remaining images are appended below the text as a WordPress gallery.
 - Uses the selected category and post status.
 - Imports oldest → newest.
 - Uses Facebook ID / archive identity metadata stored in post meta for duplicate protection.
