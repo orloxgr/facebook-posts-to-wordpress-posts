@@ -1,0 +1,37 @@
+name: Release WordPress plugin v1.0.1
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.event.head_commit.message == 'Release WordPress plugin v1.0.1'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build plugin ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd wordpress-plugin
+          zip -r ../facebook-posts-to-wordpress-v1.0.1.zip facebook-posts-to-wordpress \
+            -x '*/.DS_Store' '*/Thumbs.db'
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create plugin-v1.0.1 \
+            facebook-posts-to-wordpress-v1.0.1.zip \
+            --target "$GITHUB_SHA" \
+            --title "WordPress Plugin v1.0.1" \
+            --notes "Plugin-only release. Removes internal FB_IMPORT/FB_FINGERPRINT/FB_SOURCE comments from post content, adds the source publication year as a WordPress tag, and changes imported post slugs to YYYYMMDD-title."
