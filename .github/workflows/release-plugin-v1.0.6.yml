@@ -1,0 +1,49 @@
+name: Release WordPress plugin v1.0.6
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.event.head_commit.message == 'Release WordPress plugin v1.0.6'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: PHP syntax check
+        shell: bash
+        run: |
+          set -euo pipefail
+          find wordpress-plugin/facebook-posts-to-wordpress -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: JavaScript syntax check
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check wordpress-plugin/facebook-posts-to-wordpress/assets/admin.js
+
+      - name: Build plugin ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd wordpress-plugin
+          zip -r ../facebook-posts-to-wordpress-v1.0.6.zip facebook-posts-to-wordpress \
+            -x '*/.DS_Store' '*/Thumbs.db'
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create plugin-v1.0.6 \
+            facebook-posts-to-wordpress-v1.0.6.zip \
+            --target "$GITHUB_SHA" \
+            --title "WordPress Plugin v1.0.6" \
+            --notes "Plugin-only release. Adds overwrite mode for already imported posts, replaces old imported images, tries a higher-resolution Facebook CDN rendition with fallback to the original signed URL, reports downloaded featured-image dimensions, and makes long imports resilient to transient eviction."
