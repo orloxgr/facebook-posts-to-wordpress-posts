@@ -22,10 +22,7 @@ function fbwp_sideload_media($post_id, $images) {
 
         $media_id = media_sideload_image($url, $post_id, $alt, 'id');
         if (is_wp_error($media_id)) {
-            return new WP_Error(
-                'image_import_failed',
-                'Image #' . ($i + 1) . ' failed: ' . $media_id->get_error_message()
-            );
+            return new WP_Error('image_import_failed', 'Image #' . ($i + 1) . ' failed: ' . $media_id->get_error_message());
         }
 
         $media_id = (int) $media_id;
@@ -39,16 +36,10 @@ function fbwp_sideload_media($post_id, $images) {
 }
 
 function fbwp_build_content($post, $media_ids) {
-    $content = fbwp_source_marker($post);
-    $content .= fbwp_text_to_content(isset($post['text']) ? $post['text'] : '');
+    $content = fbwp_text_to_content(isset($post['text']) ? $post['text'] : '');
 
     foreach ($media_ids as $media_id) {
-        $image_html = wp_get_attachment_image(
-            $media_id,
-            'large',
-            false,
-            array('loading' => 'lazy', 'decoding' => 'async')
-        );
+        $image_html = wp_get_attachment_image($media_id, 'large', false, array('loading' => 'lazy', 'decoding' => 'async'));
         if ($image_html) {
             $content .= "\n<figure class=\"wp-block-image size-large\">" . $image_html . "</figure>\n";
         }
