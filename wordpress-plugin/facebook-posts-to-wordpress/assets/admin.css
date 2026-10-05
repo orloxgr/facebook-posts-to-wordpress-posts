@@ -1,0 +1,69 @@
+.fbwp-wrap {
+    max-width: 1100px;
+}
+
+.fbwp-panel {
+    background: #fff;
+    border: 1px solid #dcdcde;
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
+    margin: 18px 0;
+    padding: 18px 20px;
+}
+
+.fbwp-panel h2 {
+    margin-top: 0;
+}
+
+.fbwp-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.fbwp-stat {
+    border: 1px solid #dcdcde;
+    min-width: 120px;
+    padding: 14px 16px;
+}
+
+.fbwp-stat strong,
+.fbwp-stat span {
+    display: block;
+}
+
+.fbwp-stat strong {
+    font-size: 24px;
+    line-height: 1.2;
+}
+
+.fbwp-stat span {
+    color: #646970;
+    margin-top: 4px;
+}
+
+.fbwp-meta {
+    flex-basis: 100%;
+    margin-bottom: 0;
+}
+
+.fbwp-progress-wrap {
+    align-items: center;
+    display: flex;
+    gap: 12px;
+    margin: 14px 0;
+}
+
+#fbwp-progress {
+    height: 22px;
+    width: min(700px, 80%);
+}
+
+#fbwp-log {
+    background: #1d2327;
+    color: #f0f0f1;
+    max-height: 420px;
+    min-height: 220px;
+    overflow: auto;
+    padding: 14px;
+    white-space: pre-wrap;
+}
