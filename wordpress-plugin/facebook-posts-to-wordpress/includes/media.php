@@ -35,14 +35,68 @@ function fbwp_sideload_media($post_id, $images) {
     return $media_ids;
 }
 
+function fbwp_render_single_content_image($media_id) {
+    $media_id = (int) $media_id;
+    $image_html = wp_get_attachment_image(
+        $media_id,
+        'large',
+        false,
+        array('loading' => 'lazy', 'decoding' => 'async')
+    );
+
+    if (!$image_html) {
+        return '';
+    }
+
+    return "\n<!-- wp:image {\"id\":" . $media_id . ",\"sizeSlug\":\"large\",\"linkDestination\":\"none\"} -->\n" .
+        '<figure class="wp-block-image size-large">' . $image_html . "</figure>\n" .
+        "<!-- /wp:image -->\n";
+}
+
+function fbwp_render_content_gallery($media_ids) {
+    $media_ids = array_values(array_map('intval', $media_ids));
+    if (count($media_ids) < 2) {
+        return '';
+    }
+
+    $html = "\n<!-- wp:gallery {\"linkTo\":\"none\"} -->\n";
+    $html .= '<figure class="wp-block-gallery has-nested-images columns-default is-cropped">' . "\n";
+
+    foreach ($media_ids as $media_id) {
+        $image_html = wp_get_attachment_image(
+            $media_id,
+            'large',
+            false,
+            array('loading' => 'lazy', 'decoding' => 'async')
+        );
+
+        if (!$image_html) {
+            continue;
+        }
+
+        $html .= "<!-- wp:image {\"id\":" . $media_id . ",\"sizeSlug\":\"large\",\"linkDestination\":\"none\"} -->\n";
+        $html .= '<figure class="wp-block-image size-large">' . $image_html . "</figure>\n";
+        $html .= "<!-- /wp:image -->\n";
+    }
+
+    $html .= "</figure>\n<!-- /wp:gallery -->\n";
+    return $html;
+}
+
 function fbwp_build_content($post, $media_ids) {
     $content = fbwp_text_to_content(isset($post['text']) ? $post['text'] : '');
 
-    foreach ($media_ids as $media_id) {
-        $image_html = wp_get_attachment_image($media_id, 'large', false, array('loading' => 'lazy', 'decoding' => 'async'));
-        if ($image_html) {
-            $content .= "\n<figure class=\"wp-block-image size-large\">" . $image_html . "</figure>\n";
-        }
+    /*
+     * Image #1 is always reserved for featured image only.
+     * It must never be duplicated inside the post content.
+     */
+    $content_media_ids = array_values(array_slice($media_ids, 1));
+    $content_image_count = count($content_media_ids);
+
+    if ($content_image_count === 1) {
+        $content .= fbwp_render_single_content_image($content_media_ids[0]);
+    } elseif ($content_image_count >= 2) {
+        $content .= fbwp_render_content_gallery($content_media_ids);
     }
 
     return $content;
