@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.5
+
+- Stop using the generated slug as duplicate identity.
+- Allow distinct Facebook posts that share the same date and generated title to import separately.
+- Keep duplicate protection based on Facebook source ID, archive key, and fingerprint metadata.
+- Let WordPress make a colliding slug unique automatically (for example by appending `-2`).
+
 ## 1.0.4
 
 - Limit imported galleries to a maximum of three columns/images per row.
