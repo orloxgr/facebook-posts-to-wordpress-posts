@@ -10,7 +10,7 @@ function fbwp_admin_capability() {
 function fbwp_normalize_text_key($value) {
     $value = wp_strip_all_tags((string) $value);
     $value = remove_accents($value);
-    $value = mb_strtolower($value, 'UTF-8');
+    $value = function_exists('mb_strtolower') ? mb_strtolower($value, 'UTF-8') : strtolower($value);
     $value = preg_replace('/\s+/u', ' ', $value);
     return trim((string) $value);
 }
