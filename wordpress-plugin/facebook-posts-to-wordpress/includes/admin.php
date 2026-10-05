@@ -48,6 +48,7 @@ function fbwp_render_admin_page() {
             <table class="form-table" role="presentation">
                 <tr><th><label for="fbwp-category">Category</label></th><td><input type="text" class="regular-text" id="fbwp-category" value="Δελτία Τύπου - Νέα - Ανακοινώσεις"></td></tr>
                 <tr><th><label for="fbwp-status">Post status</label></th><td><select id="fbwp-status"><option value="publish" selected>Publish</option><option value="draft">Draft</option></select></td></tr>
+                <tr><th>Existing posts</th><td><label><input type="checkbox" id="fbwp-overwrite" value="1"> Overwrite existing imported posts</label><p class="description">When enabled, matching posts are updated in place and their imported images are replaced. Leave unchecked to skip existing posts.</p></td></tr>
             </table>
         </div>
         <div class="fbwp-panel" id="fbwp-summary-panel" hidden><h2>3. Validation</h2><div class="fbwp-summary" id="fbwp-summary"></div></div>
@@ -97,12 +98,7 @@ function fbwp_ajax_upload_json() {
     if (is_wp_error($token)) {
         wp_send_json_error(array('message' => $token->get_error_message()), 500);
     }
-    wp_send_json_success(array(
-        'token' => $token,
-        'validation' => $validation,
-        'page' => isset($decoded['page']) ? (string) $decoded['page'] : '',
-        'cutoff' => isset($decoded['cutoff']) ? (string) $decoded['cutoff'] : '',
-    ));
+    wp_send_json_success(array('token' => $token, 'validation' => $validation, 'page' => isset($decoded['page']) ? (string) $decoded['page'] : '', 'cutoff' => isset($decoded['cutoff']) ? (string) $decoded['cutoff'] : ''));
 }
 add_action('wp_ajax_fbwp_upload_json', 'fbwp_ajax_upload_json');
 
@@ -112,6 +108,7 @@ function fbwp_ajax_import_post() {
     $index = isset($_POST['index']) ? (int) $_POST['index'] : -1;
     $category = isset($_POST['category']) ? sanitize_text_field(wp_unslash($_POST['category'])) : '';
     $status = isset($_POST['status']) ? sanitize_key(wp_unslash($_POST['status'])) : 'publish';
+    $overwrite = !empty($_POST['overwrite']) && sanitize_text_field(wp_unslash($_POST['overwrite'])) === '1';
     if (!in_array($status, array('publish', 'draft'), true)) {
         $status = 'publish';
     }
@@ -125,7 +122,7 @@ function fbwp_ajax_import_post() {
         wp_send_json_error(array('message' => 'Invalid post index.'), 400);
     }
 
-    $result = fbwp_import_one_record($posts[$index], $category, $status);
+    $result = fbwp_import_one_record($posts[$index], $category, $status, $overwrite);
     if (is_wp_error($result)) {
         wp_send_json_error(array('message' => $result->get_error_message()), 500);
     }
