@@ -175,19 +175,34 @@ function fbwp_date_parts($date_iso) {
     return array('local' => $local, 'gmt' => get_gmt_from_date($local));
 }
 
-function fbwp_source_marker($post) {
-    $id = isset($post['id']) ? sanitize_text_field((string) $post['id']) : '';
-    $fp = isset($post['fingerprint']) ? sanitize_text_field((string) $post['fingerprint']) : '';
-    $permalink = isset($post['permalink']) ? esc_url_raw((string) $post['permalink']) : '';
+function fbwp_strip_trailing_hashtag_block($text) {
+    $text = str_replace(array("\r\n", "\r"), "\n", (string) $text);
+    $lines = preg_split('/\n/u', rtrim($text));
 
-    $marker = "<!-- FB_IMPORT_ID:" . $id . " -->\n";
-    $marker .= "<!-- FB_FINGERPRINT:" . $fp . " -->\n";
-    if ($permalink !== '') {
-        $marker .= "<!-- FB_SOURCE:" . esc_url($permalink) . " -->\n";
+    if (!is_array($lines)) {
+        return rtrim($text);
     }
-    return $marker;
+
+    while (!empty($lines)) {
+        $line = trim((string) end($lines));
+
+        if ($line === '') {
+            array_pop($lines);
+            continue;
+        }
+
+        if (preg_match('/^(?:#[\p{L}\p{N}_]+(?:\s+|$))+$/u', $line)) {
+            array_pop($lines);
+            continue;
+        }
+
+        break;
+    }
+
+    return rtrim(implode("\n", $lines));
 }
 
 function fbwp_text_to_content($text) {
-    return wpautop(make_clickable(esc_html((string) $text)));
+    $clean_text = fbwp_strip_trailing_hashtag_block($text);
+    return wpautop(make_clickable(esc_html($clean_text)));
 }
