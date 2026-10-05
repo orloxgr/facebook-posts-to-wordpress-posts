@@ -102,6 +102,7 @@ function fbwp_import_one_record($post, $category_name, $status, $overwrite = fal
             'title' => get_the_title($existing_id),
             'images' => 0,
             'tags' => 0,
+            'featuredSize' => '',
         );
     }
 
@@ -210,6 +211,7 @@ function fbwp_import_one_record($post, $category_name, $status, $overwrite = fal
             'title' => $title,
             'images' => count($media_ids),
             'tags' => count($tags),
+            'featuredSize' => fbwp_featured_source_size($media_ids),
         );
     } catch (Throwable $e) {
         fbwp_delete_media_ids($media_ids);
