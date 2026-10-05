@@ -131,20 +131,38 @@ function fbwp_extract_hashtags($text) {
 }
 
 function fbwp_slug_for_post($post) {
-    $source_id = fbwp_real_source_id($post);
-    if ($source_id !== '') {
-        return sanitize_title('facebook-' . $source_id);
+    $date_iso = isset($post['dateIso']) ? trim((string) $post['dateIso']) : '';
+    $ts = $date_iso !== '' ? strtotime($date_iso) : false;
+
+    if ($ts) {
+        $date_prefix = wp_date('Ymd', $ts, wp_timezone());
+    } else {
+        $date_prefix = wp_date('Ymd', time(), wp_timezone());
     }
 
-    $fingerprint = isset($post['fingerprint']) ? (string) $post['fingerprint'] : '';
-    if ($fingerprint === '' && isset($post['archiveKey'])) {
-        $fingerprint = (string) $post['archiveKey'];
-    }
-    if ($fingerprint === '') {
-        $fingerprint = md5((string) ($post['text'] ?? '') . '|' . (string) ($post['dateIso'] ?? ''));
+    $title = fbwp_title_from_text(
+        isset($post['text']) ? (string) $post['text'] : '',
+        $date_iso
+    );
+
+    $title_slug = sanitize_title($title);
+    if ($title_slug === '') {
+        $source_id = fbwp_real_source_id($post);
+        if ($source_id !== '') {
+            $title_slug = 'facebook-' . $source_id;
+        } else {
+            $fingerprint = isset($post['fingerprint']) ? (string) $post['fingerprint'] : '';
+            if ($fingerprint === '' && isset($post['archiveKey'])) {
+                $fingerprint = (string) $post['archiveKey'];
+            }
+            if ($fingerprint === '') {
+                $fingerprint = md5((string) ($post['text'] ?? '') . '|' . $date_iso);
+            }
+            $title_slug = 'facebook-' . preg_replace('/[^a-zA-Z0-9_-]/', '-', $fingerprint);
+        }
     }
 
-    return sanitize_title('facebook-' . preg_replace('/[^a-zA-Z0-9_-]/', '-', $fingerprint));
+    return sanitize_title($date_prefix . '-' . $title_slug);
 }
 
 function fbwp_date_parts($date_iso) {
