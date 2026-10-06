@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Facebook Page to WordPress Collector
 // @namespace    iniotakis-tools
-// @version      1.4.11
+// @version      1.4.12
 // @description  Collect Facebook Page posts to JSON for WordPress import, preserving source dates, text and photos.
 // @updateURL    https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/facebook-posts-to-wordpress.user.js
 // @downloadURL  https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/facebook-posts-to-wordpress.user.js
@@ -2535,6 +2535,76 @@
     }
 
 
+    function collectTimestampDomDiagnostics(article) {
+        if (!article) return null;
+
+        const profile = article.querySelector('[data-ad-rendering-role="profile_name"]');
+        const story = article.querySelector('[data-ad-rendering-role="story_message"]');
+        let headerScope = profile || article;
+
+        if (profile) {
+            let current = profile;
+            while (current.parentElement && current.parentElement !== article) {
+                const parent = current.parentElement;
+                if (story && parent.contains(story)) break;
+                headerScope = parent;
+                current = parent;
+            }
+        }
+
+        function describe(el) {
+            if (!el || el.nodeType !== 1) return null;
+            return {
+                tag: el.tagName,
+                text: String(el.innerText || el.textContent || '')
+                    .replace(/\s+/g, ' ').trim().slice(0, 240),
+                href: el.getAttribute('href'),
+                role: el.getAttribute('role'),
+                ariaLabel: el.getAttribute('aria-label'),
+                ariaLabelledby: el.getAttribute('aria-labelledby'),
+                title: el.getAttribute('title'),
+                target: el.getAttribute('target'),
+                dataUtime: el.getAttribute('data-utime'),
+                datetime: el.getAttribute('datetime'),
+                dataAdRenderingRole: el.getAttribute('data-ad-rendering-role'),
+                className: String(el.getAttribute('class') || '').slice(0, 320)
+            };
+        }
+
+        const selector = [
+            'a', 'time', 'abbr', '[role="link"]', '[role="button"]',
+            '[aria-label]', '[aria-labelledby]', '[title]', '[data-utime]', '[datetime]'
+        ].join(',');
+
+        const elements = [];
+        const seen = new Set();
+        for (const el of headerScope.querySelectorAll(selector)) {
+            if (elements.length >= 120) break;
+            if (seen.has(el)) continue;
+            seen.add(el);
+            const item = describe(el);
+            if (item) elements.push(item);
+        }
+
+        const profileAncestors = [];
+        let current = profile;
+        let depth = 0;
+        while (current && depth < 8) {
+            const item = describe(current);
+            if (item) profileAncestors.push(item);
+            if (current === article) break;
+            current = current.parentElement;
+            depth++;
+        }
+
+        return {
+            headerScope: describe(headerScope),
+            profile: describe(profile),
+            profileAncestors,
+            elements
+        };
+    }
+
     async function collectVisiblePosts(cutoffDate) {
         const archive = loadArchiveRaw();
 
@@ -2833,13 +2903,32 @@
                     : null,
                 dateSource: dateInfo.source || '',
                 dateDebug: {
-                    candidates: (timestampDebug.values || []).map(x => ({
+                    candidates: [
+                        ...(timestampBeforeExpand.values || []),
+                        ...(timestampDebug.values || [])
+                    ].map(x => ({
                         source: x.source,
                         value: x.value
                     })),
                     hasTimestampElement: Boolean(
+                        timestampBeforeExpand.timestampEl ||
                         timestampDebug.timestampEl
-                    )
+                    ),
+                    beforeExpand: {
+                        candidates: (timestampBeforeExpand.values || []).map(x => ({
+                            source: x.source,
+                            value: x.value
+                        })),
+                        hasTimestampElement: Boolean(timestampBeforeExpand.timestampEl)
+                    },
+                    afterExpand: {
+                        candidates: (timestampDebug.values || []).map(x => ({
+                            source: x.source,
+                            value: x.value
+                        })),
+                        hasTimestampElement: Boolean(timestampDebug.timestampEl)
+                    },
+                    dom: dateValue ? null : collectTimestampDomDiagnostics(article)
                 },
                 collectedAt: new Date().toISOString(),
                 imported: imported.has(id)
