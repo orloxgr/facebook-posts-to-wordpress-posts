@@ -12,15 +12,13 @@ Install directly from GitHub using the raw userscript URL:
 
 With Tampermonkey installed, opening that URL should offer the userscript installation screen.
 
-The canonical userscript includes `@updateURL` and `@downloadURL` pointing to the same raw GitHub file, so Tampermonkey can check for future updates automatically.
+The canonical userscript includes `@updateURL` and `@downloadURL` pointing to the same raw GitHub file, so Tampermonkey can check for future updates automatically whenever `@version` changes.
 
-The canonical script loads the versioned collector with Tampermonkey's `@require`. It does **not** use `eval()` or `new Function()`, so Facebook's Content Security Policy does not block the collector with an `unsafe-eval` error.
+There is only one active collector source file: `facebook-posts-to-wordpress.user.js`. The collector code runs directly as a Tampermonkey userscript; there is no loader, `@require`, `eval()` or `new Function()` layer.
 
 After installation, open the Facebook Page you want to archive, for example:
 
 `https://www.facebook.com/example.page`
-
-The readable versioned collector source is kept in this directory as `facebook-posts-to-wordpress-v1.4.8.user.js`.
 
 ## Workflow
 
@@ -41,7 +39,13 @@ The collector exports JSON only; the obsolete direct WordPress import controls h
 - Facebook permalink detection accepts normal Page post/photo/video/reel URL shapes.
 - Collector state is isolated per Facebook Page and per collector version.
 - Export filenames use the current Page context instead of a client-specific prefix.
-- The legacy direct WordPress REST importer, if used, asks for the WordPress site URL instead of using a hard-coded domain.
+
+## Version handling
+
+- The only literal collector version is the Tampermonkey `@version` metadata field.
+- Runtime UI text, clear-state confirmation text and storage keys read the version from `GM_info.script.version`.
+- Storage keys derive their version suffix automatically from that runtime value.
+- Each collector release uses its own isolated state; no previous-version state migration is performed.
 
 ## Collector rules
 
@@ -51,4 +55,3 @@ The collector exports JSON only; the obsolete direct WordPress import controls h
 - `textFingerprint` is diagnostic only, never the normal identity key.
 - Exact full text is used only for the narrow unresolved-snapshot repair rule: exactly one dated match and an identity-less unresolved snapshot.
 - A post with more than 20 collected images is considered an image-scope anomaly and is blocked from import.
-- Each collector release uses its own isolated state; no previous-version state migration is performed.
