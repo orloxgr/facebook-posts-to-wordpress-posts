@@ -1,19 +1,16 @@
 // ==UserScript==
-// @name         Δήμος Αλοννήσου - Facebook to WordPress Collector Loader
+// @name         Facebook Page to WordPress Collector Loader
 // @namespace    iniotakis-tools
-// @version      1.4.6-loader.1
-// @description  Loads the exact v1.4.6 collector bundle stored in this repository.
-// @match        https://www.facebook.com/dimos.alonnisou*
-// @match        https://www.facebook.com/dimos.alonnisou/*
+// @version      1.4.7-loader.1
+// @description  Loads the generic v1.4.7 Facebook Page collector bundle stored in this repository.
+// @match        https://www.facebook.com/*
+// @match        https://facebook.com/*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_deleteValue
 // @connect      raw.githubusercontent.com
-// @connect      alonissos.gov.gr
-// @connect      *.fbcdn.net
-// @connect      facebook.com
-// @connect      www.facebook.com
+// @connect      *
 // @run-at       document-idle
 // ==/UserScript==
 
@@ -22,13 +19,13 @@
 
     const BASE = 'https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/payload/';
     const PARTS = [
-        'v1.4.6.part01.b64',
-        'v1.4.6.part02.b64',
-        'v1.4.6.part03.b64',
-        'v1.4.6.part04.b64',
-        'v1.4.6.part05.b64'
+        'v1.4.7.part01.b64',
+        'v1.4.7.part02.b64',
+        'v1.4.7.part03.b64',
+        'v1.4.7.part04.b64',
+        'v1.4.7.part05.b64'
     ];
-    const EXPECTED_SHA256 = 'c934e99d176afcdba464720919dbbc8a7198ca6edeb58d04399212101fa05b98';
+    const EXPECTED_SHA256 = '8d51223f55c2e77893085788dad0113176313f2f7c38ff93881bc6d9ebb23aaf';
 
     function gmGet(url) {
         return new Promise((resolve, reject) => {
