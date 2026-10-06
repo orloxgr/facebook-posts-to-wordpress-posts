@@ -6,7 +6,15 @@ The collector is generic: it is not tied to a specific Facebook Page or WordPres
 
 ## Install
 
-Install `facebook-posts-to-wordpress.user.js` in Tampermonkey, then open the Facebook Page you want to archive, for example:
+Install directly from GitHub using the raw userscript URL:
+
+`https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/facebook-posts-to-wordpress.user.js`
+
+With Tampermonkey installed, opening that URL should offer the userscript installation screen.
+
+The loader includes `@updateURL` and `@downloadURL` pointing to the same raw GitHub file, so Tampermonkey can check for and install future loader updates automatically when its version changes.
+
+After installation, open the Facebook Page you want to archive, for example:
 
 `https://www.facebook.com/example.page`
 
