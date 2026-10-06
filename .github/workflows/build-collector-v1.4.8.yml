@@ -7,7 +7,7 @@ permissions:
 
 jobs:
   build:
-    if: ${{ github.event.head_commit.message == 'Build collector v1.4.8 retry' }}
+    if: ${{ github.event.head_commit.message == 'Build collector v1.4.8 retry2' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -26,59 +26,47 @@ jobs:
           src = src.replace('v1.4.7', 'v1.4.8')
           src = src.replace('Facebook → WordPress v1.4.6', 'Facebook → WordPress v1.4.8')
 
-          ui_pattern = re.compile(
-              r'\n\s*<div style="display:flex;gap:5px;margin-top:7px">\s*<button\s+id="fbwp-one"[\s\S]*?<div style="margin-top:8px;font-size:12px">\s*WordPress status:[\s\S]*?</select>\s*</div>'
-          )
+          ui_pattern = re.compile(r'\n\s*<div style="display:flex;gap:5px;margin-top:7px">\s*<button\s+id="fbwp-one"[\s\S]*?<div style="margin-top:8px;font-size:12px">\s*WordPress status:[\s\S]*?</select>\s*</div>')
           src, n = ui_pattern.subn('\n', src, count=1)
           if n != 1:
               raise SystemExit(f'Import UI removal count: {n}')
 
           for element_id, handler in [('fbwp-one', 'importFirstUnimported'), ('fbwp-all', 'importAll')]:
-              pattern = re.compile(
-                  rf"\n\s*document\s*\.getElementById\('{re.escape(element_id)}'\)\s*\.addEventListener\('click',\s*{handler}\);"
-              )
+              pattern = re.compile(rf"\n\s*document\s*\.getElementById\('{re.escape(element_id)}'\)\s*\.addEventListener\('click',\s*{handler}\);")
               src, n = pattern.subn('\n', src, count=1)
               if n != 1:
                   raise SystemExit(f'Listener removal failed for {element_id}: {n}')
 
-          pattern = re.compile(
-              r'    async function expandArticleBeforeCollect\(article\) \{[\s\S]*?\n    \}\n\n\n    async function waitForTimestampCandidates'
+          pattern = re.compile(r'    async function expandArticleBeforeCollect\(article\) \{[\s\S]*?\n    \}\n\n\n    async function waitForTimestampCandidates')
+          replacement = (
+              "    async function expandArticleBeforeCollect(article) {\n"
+              "        if (!article?.isConnected) {\n"
+              "            return { found: 0, opened: 0, failed: 0 };\n"
+              "        }\n\n"
+              "        let found = 0;\n"
+              "        let opened = 0;\n"
+              "        let failed = 0;\n\n"
+              "        for (let attempt = 0; attempt < 4; attempt++) {\n"
+              "            const button = findSeeMoreInArticle(article);\n"
+              "            if (!button) break;\n\n"
+              "            found++;\n"
+              "            const ok = await clickOneSeeMore(button);\n\n"
+              "            if (ok) {\n"
+              "                opened++;\n"
+              "                await new Promise(resolve => setTimeout(resolve, 120));\n"
+              "                continue;\n"
+              "            }\n\n"
+              "            failed++;\n"
+              "            if (button.isConnected) {\n"
+              "                button.dataset.fbwpSeeMoreFailed = '1';\n"
+              "            }\n"
+              "            break;\n"
+              "        }\n\n"
+              "        return { found, opened, failed };\n"
+              "    }\n\n\n"
+              "    async function waitForTimestampCandidates"
           )
-          replacement = '''    async function expandArticleBeforeCollect(article) {
-        if (!article?.isConnected) {
-            return { found: 0, opened: 0, failed: 0 };
-        }
-
-        let found = 0;
-        let opened = 0;
-        let failed = 0;
-
-        for (let attempt = 0; attempt < 4; attempt++) {
-            const button = findSeeMoreInArticle(article);
-            if (!button) break;
-
-            found++;
-            const ok = await clickOneSeeMore(button);
-
-            if (ok) {
-                opened++;
-                await new Promise(resolve => setTimeout(resolve, 120));
-                continue;
-            }
-
-            failed++;
-            if (button.isConnected) {
-                button.dataset.fbwpSeeMoreFailed = '1';
-            }
-            break;
-        }
-
-        return { found, opened, failed };
-    }
-
-
-    async function waitForTimestampCandidates'''
-          src, n = pattern.subn(replacement, src, count=1)
+          src, n = pattern.subn(lambda m: replacement, src, count=1)
           if n != 1:
               raise SystemExit(f'expandArticleBeforeCollect replacement count: {n}')
 
