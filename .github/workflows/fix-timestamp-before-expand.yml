@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   fix:
-    if: github.event.head_commit.message == 'Retry timestamp capture fix'
+    if: github.event.head_commit.message == 'Retry2 timestamp capture fix'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -22,7 +22,6 @@ jobs:
           set -euo pipefail
           python3 <<'PY'
           from pathlib import Path
-          import re
 
           path = Path('tampermonkey/facebook-posts-to-wordpress.user.js')
           src = path.read_text(encoding='utf-8')
@@ -31,8 +30,16 @@ jobs:
               raise SystemExit('Expected collector version 1.4.10 not found')
           src = src.replace('// @version      1.4.10', '// @version      1.4.11', 1)
 
-          anchor = '''            const expandInfo = await expandArticleBeforeCollect(article);'''
-          inserted = '''            /* Capture timestamp before See more can trigger a React subtree replacement. */
+          collect_pos = src.find('    async function collectVisiblePosts(cutoffDate) {')
+          if collect_pos < 0:
+              raise SystemExit('collectVisiblePosts not found')
+
+          anchor = '            const expandInfo = await expandArticleBeforeCollect(article);'
+          anchor_pos = src.find(anchor, collect_pos)
+          if anchor_pos < 0:
+              raise SystemExit('expand anchor not found in collectVisiblePosts')
+
+          inserted = '''            /* Capture the structural timestamp before See more can replace the React subtree. */
             const timestampBeforeExpand = await waitForTimestampCandidates(
                 article,
                 1600
@@ -71,75 +78,20 @@ jobs:
 
             const expandInfo = await expandArticleBeforeCollect(article);'''
 
-          # Only patch collectVisiblePosts, not the older scan helper.
-          collect_pos = src.find('    async function collectVisiblePosts(cutoffDate) {')
-          if collect_pos < 0:
-              raise SystemExit('collectVisiblePosts not found')
-          anchor_pos = src.find(anchor, collect_pos)
-          if anchor_pos < 0:
-              raise SystemExit('expand anchor not found in collectVisiblePosts')
           src = src[:anchor_pos] + inserted + src[anchor_pos + len(anchor):]
 
-          fallback_anchor = '''            const dateValue = dateInfo.date;'''
+          fallback_anchor = '            const dateValue = dateInfo.date;'
+          fallback_pos = src.find(fallback_anchor, anchor_pos + len(inserted))
+          if fallback_pos < 0:
+              raise SystemExit('dateValue anchor not found after expand block')
+
           fallback = '''            if (!dateInfo.date && dateBeforeExpand.date) {
                 dateInfo = dateBeforeExpand;
             }
 
             const dateValue = dateInfo.date;'''
-          fallback_pos = src.find(fallback_anchor, collect_pos)
-          if fallback_pos < 0:
-              raise SystemExit('dateValue anchor not found')
+
           src = src[:fallback_pos] + fallback + src[fallback_pos + len(fallback_anchor):]
-
-          old_debug = '''                dateDebug: {
-                    candidates: (timestampDebug.values || []).map(x => ({
-                        source: x.source,
-                        value: x.value
-                    })),
-                    hasTimestampElement: Boolean(
-                        timestampDebug.timestampEl
-                    )
-                },'''
-          new_debug = '''                dateDebug: {
-                    candidates: [
-                        ...(timestampBeforeExpand.values || []),
-                        ...(timestampDebug.values || [])
-                    ].map(x => ({
-                        source: x.source,
-                        value: x.value
-                    })),
-                    hasTimestampElement: Boolean(
-                        timestampBeforeExpand.timestampEl ||
-                        timestampDebug.timestampEl
-                    ),
-                    beforeExpand: {
-                        candidates: (timestampBeforeExpand.values || []).map(x => ({
-                            source: x.source,
-                            value: x.value
-                        })),
-                        hasTimestampElement: Boolean(
-                            timestampBeforeExpand.timestampEl
-                        )
-                    },
-                    afterExpand: {
-                        candidates: (timestampDebug.values || []).map(x => ({
-                            source: x.source,
-                            value: x.value
-                        })),
-                        hasTimestampElement: Boolean(
-                            timestampDebug.timestampEl
-                        )
-                    },
-                    resolvedFrom: dateBeforeExpand.date &&
-                        dateInfo.source === dateBeforeExpand.source
-                            ? 'before-expand'
-                            : (dateInfo.date ? 'after-expand' : 'unresolved')
-                },'''
-
-          debug_pos = src.find(old_debug, collect_pos)
-          if debug_pos < 0:
-              raise SystemExit('dateDebug block not found in collectVisiblePosts')
-          src = src[:debug_pos] + new_debug + src[debug_pos + len(old_debug):]
 
           src = src.replace(
               'This also repairs v1.0/v1.1 entries whose keys contained __cft__[0].',
@@ -167,7 +119,7 @@ jobs:
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git config user.email '41898282+orloxgr@users.noreply.github.com'
           git add tampermonkey/facebook-posts-to-wordpress.user.js
           git commit -m 'Capture timestamps before expanding posts'
           git push origin HEAD:main
