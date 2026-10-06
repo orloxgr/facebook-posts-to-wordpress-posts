@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Facebook Page to WordPress Collector
 // @namespace    iniotakis-tools
-// @version      1.4.13
+// @version      1.4.14
 // @description  Collect Facebook Page posts to JSON for WordPress import, preserving source dates, text and photos.
 // @updateURL    https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/facebook-posts-to-wordpress.user.js
 // @downloadURL  https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/facebook-posts-to-wordpress.user.js
@@ -1998,15 +1998,28 @@
         if (!el) return;
         try { el.scrollIntoView({ block: 'center', inline: 'nearest' }); } catch (_) {}
 
-        const common = { bubbles: true, cancelable: true, view: window };
+        const rect = el.getBoundingClientRect?.();
+        const clientX = rect ? Math.round(rect.left + Math.max(1, rect.width) / 2) : 1;
+        const clientY = rect ? Math.round(rect.top + Math.max(1, rect.height) / 2) : 1;
+        const common = {
+            bubbles: true,
+            cancelable: true,
+            view: window,
+            clientX,
+            clientY,
+            screenX: clientX,
+            screenY: clientY
+        };
 
         try {
-            el.dispatchEvent(new PointerEvent('pointerover', {
-                ...common, pointerId: 1, pointerType: 'mouse', isPrimary: true
-            }));
-            el.dispatchEvent(new PointerEvent('pointerenter', {
-                ...common, pointerId: 1, pointerType: 'mouse', isPrimary: true
-            }));
+            for (const type of ['pointerover', 'pointerenter', 'pointermove']) {
+                el.dispatchEvent(new PointerEvent(type, {
+                    ...common,
+                    pointerId: 1,
+                    pointerType: 'mouse',
+                    isPrimary: true
+                }));
+            }
         } catch (_) {}
 
         for (const type of ['mouseover', 'mouseenter', 'mousemove']) {
@@ -2049,12 +2062,43 @@
     }
 
     async function getDateFromHover(timestampEl) {
-        if (!timestampEl) return { date: null, source: '' };
+        if (!timestampEl) {
+            return { date: null, source: '', hoverDebug: [] };
+        }
 
         const observed = new Set();
+        const baseline = new Set(collectTooltipTexts());
         const existingTooltips = new Set(
             [...document.querySelectorAll('[role="tooltip"]')]
         );
+
+        function addValue(value) {
+            const t = String(value || '')
+                .replace(/\u202f/g, ' ')
+                .trim();
+
+            if (
+                t &&
+                t.length <= 240 &&
+                looksLikeDateText(t) &&
+                !baseline.has(t)
+            ) {
+                observed.add(t);
+            }
+        }
+
+        function collectFromElement(el) {
+            if (!(el instanceof Element)) return;
+
+            for (const v of [
+                el.getAttribute?.('aria-label'),
+                el.getAttribute?.('title'),
+                el.innerText,
+                el.textContent
+            ]) {
+                addValue(v);
+            }
+        }
 
         const observer = new MutationObserver(mutations => {
             for (const mutation of mutations) {
@@ -2062,42 +2106,98 @@
                     if (!(node instanceof Element)) continue;
 
                     const candidates = [];
-                    if (node.matches?.('[role="tooltip"]')) candidates.push(node);
-                    candidates.push(...node.querySelectorAll?.('[role="tooltip"]') || []);
+                    if (
+                        node.matches?.(
+                            '[role="tooltip"], [data-visualcompletion="ignore-dynamic"], [aria-live="polite"]'
+                        )
+                    ) {
+                        candidates.push(node);
+                    }
+
+                    candidates.push(...(
+                        node.querySelectorAll?.(
+                            '[role="tooltip"], [data-visualcompletion="ignore-dynamic"], [aria-live="polite"]'
+                        ) || []
+                    ));
 
                     for (const el of candidates) {
-                        if (existingTooltips.has(el)) continue;
-
-                        for (const v of [
-                            el.getAttribute?.('aria-label'),
-                            el.getAttribute?.('title'),
-                            el.innerText,
-                            el.textContent
-                        ]) {
-                            const t = String(v || '').replace(/\u202f/g, ' ').trim();
-                            if (t && t.length <= 240 && looksLikeDateText(t)) {
-                                observed.add(t);
-                            }
+                        if (
+                            el.matches?.('[role="tooltip"]') &&
+                            existingTooltips.has(el)
+                        ) {
+                            continue;
                         }
+
+                        collectFromElement(el);
                     }
                 }
             }
         });
 
-        observer.observe(document.body, { childList: true, subtree: true });
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+
+        function collectNewTooltipTexts() {
+            for (const value of collectTooltipTexts()) {
+                addValue(value);
+            }
+        }
+
         dispatchHover(timestampEl);
-        await new Promise(resolve => setTimeout(resolve, 700));
+
+        const hoverStarted = Date.now();
+        while (Date.now() - hoverStarted < 1200) {
+            collectNewTooltipTexts();
+
+            if ([...observed].some(value => {
+                const d = parseFbDate(value);
+                return d && !isNaN(d);
+            })) {
+                break;
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 100));
+            dispatchHover(timestampEl);
+        }
+
+        if (!observed.size && timestampEl.isConnected) {
+            try {
+                timestampEl.focus({ preventScroll: true });
+            } catch (_) {
+                try { timestampEl.focus(); } catch (_) {}
+            }
+
+            const focusStarted = Date.now();
+            while (Date.now() - focusStarted < 700) {
+                collectNewTooltipTexts();
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+
+            try { timestampEl.blur(); } catch (_) {}
+        }
+
         observer.disconnect();
         dispatchUnhover(timestampEl);
+        collectNewTooltipTexts();
 
         for (const candidate of observed) {
             const d = parseFbDate(candidate);
             if (d && !isNaN(d)) {
-                return { date: d, source: 'main timestamp tooltip: ' + candidate };
+                return {
+                    date: d,
+                    source: 'main timestamp tooltip: ' + candidate,
+                    hoverDebug: [...observed].slice(0, 8)
+                };
             }
         }
 
-        return { date: null, source: [...observed].slice(0, 5).join(' | ') };
+        return {
+            date: null,
+            source: [...observed].slice(0, 5).join(' | '),
+            hoverDebug: [...observed].slice(0, 8)
+        };
     }
 
     async function extractDate(article) {
