@@ -17,14 +17,7 @@
 (function () {
     'use strict';
 
-    const BASE = 'https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/payload/';
-    const PARTS = [
-        'v1.4.7.part01.b64',
-        'v1.4.7.part02.b64',
-        'v1.4.7.part03.b64',
-        'v1.4.7.part04.b64',
-        'v1.4.7.part05.b64'
-    ];
+    const PAYLOAD_URL = 'https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/payload/v1.4.7.b64';
     const EXPECTED_SHA256 = '8d51223f55c2e77893085788dad0113176313f2f7c38ff93881bc6d9ebb23aaf';
 
     function gmGet(url) {
@@ -67,12 +60,8 @@
     }
 
     async function boot() {
-        const parts = [];
-        for (const part of PARTS) {
-            parts.push(await gmGet(BASE + part));
-        }
-
-        const source = await gunzip(base64ToBytes(parts.join('')));
+        const payload = await gmGet(PAYLOAD_URL);
+        const source = await gunzip(base64ToBytes(payload));
         const hash = await sha256(source);
         if (hash !== EXPECTED_SHA256) {
             throw new Error(`Collector payload hash mismatch: ${hash}`);
