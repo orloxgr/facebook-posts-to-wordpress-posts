@@ -54,7 +54,7 @@ jobs:
           new vm.Script(generic);
 
           const hash = crypto.createHash('sha256').update(generic, 'utf8').digest('hex');
-          const expected = '8d51223f55c2e77893085788dad0113176313f2f7c38ff93881bc6d9ebb23aaf';
+          const expected = '6992204e220f3de5052865d3a56218a4e2dadb5ca21e0e8dfc920b8dd37b7332';
           if (hash !== expected) {
             throw new Error(`Unexpected generic collector hash: ${hash}`);
           }
