@@ -1,0 +1,150 @@
+name: Build collector v1.4.8
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: github.event.head_commit.message == 'Build collector v1.4.8'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build collector v1.4.8
+        shell: bash
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          src_path = Path('tampermonkey/facebook-posts-to-wordpress-v1.4.7.user.js')
+          src = src_path.read_text(encoding='utf-8')
+
+          # Fresh isolated collector version/state.
+          src = src.replace('// @version      1.4.7', '// @version      1.4.8', 1)
+          src = src.replace('v1_4_7', 'v1_4_8')
+          src = src.replace('v1.4.7', 'v1.4.8')
+          src = src.replace('Facebook → WordPress v1.4.6', 'Facebook → WordPress v1.4.8')
+
+          # The JSON workflow is now canonical: remove the obsolete direct WordPress import controls.
+          ui_pattern = re.compile(
+              r'''\n\s*<div style="display:flex;gap:5px;margin-top:7px">\s*'''
+              r'''<button\s+id="fbwp-one"[\s\S]*?'''
+              r'''<div style="margin-top:8px;font-size:12px">\s*WordPress status:[\s\S]*?</select>\s*</div>'''
+          )
+          src, ui_count = ui_pattern.subn('\n', src, count=1)
+          if ui_count != 1:
+              raise SystemExit(f'Expected to remove one direct-import UI block, removed {ui_count}')
+
+          for element_id, handler in [
+              ('fbwp-one', 'importFirstUnimported'),
+              ('fbwp-all', 'importAll'),
+          ]:
+              p = re.compile(
+                  rf'''\n\s*document\s*\.getElementById\('{re.escape(element_id)}'\)\s*'''
+                  rf'''\.addEventListener\('click',\s*{handler}\);'''
+              )
+              src, n = p.subn('\n', src, count=1)
+              if n != 1:
+                  raise SystemExit(f'Expected to remove listener for {element_id}, removed {n}')
+
+          # Per-post collection was using a weaker click path than the existing robust helper.
+          # Reuse clickOneSeeMore(): it scrolls into view, native-clicks, then tries pointer/mouse/Enter fallbacks.
+          expand_pattern = re.compile(
+              r'''    async function expandArticleBeforeCollect\(article\) \{[\s\S]*?\n    \}\n\n\n    async function waitForTimestampCandidates'''
+          )
+          expand_replacement = '''    async function expandArticleBeforeCollect(article) {
+        if (!article?.isConnected) {
+            return { found: 0, opened: 0, failed: 0 };
+        }
+
+        let found = 0;
+        let opened = 0;
+        let failed = 0;
+
+        for (let attempt = 0; attempt < 4; attempt++) {
+            const button = findSeeMoreInArticle(article);
+            if (!button) break;
+
+            found++;
+
+            const ok = await clickOneSeeMore(button);
+
+            if (ok) {
+                opened++;
+                await new Promise(resolve => setTimeout(resolve, 120));
+                continue;
+            }
+
+            failed++;
+
+            if (button.isConnected) {
+                button.dataset.fbwpSeeMoreFailed = '1';
+            }
+
+            break;
+        }
+
+        return { found, opened, failed };
+    }
+
+
+    async function waitForTimestampCandidates'''
+          src, expand_count = expand_pattern.subn(expand_replacement, src, count=1)
+          if expand_count != 1:
+              raise SystemExit(f'Expected to replace expandArticleBeforeCollect once, replaced {expand_count}')
+
+          # Sanity checks.
+          forbidden = [
+              'Facebook → WordPress v1.4.6',
+              'id="fbwp-one"',
+              'id="fbwp-all"',
+              'id="fbwp-post-status"',
+          ]
+          for value in forbidden:
+              if value in src:
+                  raise SystemExit(f'Forbidden legacy value still present: {value}')
+
+          if 'const ok = await clickOneSeeMore(button);' not in src:
+              raise SystemExit('Robust See more path not installed')
+
+          out = Path('tampermonkey/facebook-posts-to-wordpress-v1.4.8.user.js')
+          out.write_text(src, encoding='utf-8')
+
+          # Update canonical install/update userscript to require v1.4.8.
+          loader_path = Path('tampermonkey/facebook-posts-to-wordpress.user.js')
+          loader = loader_path.read_text(encoding='utf-8')
+          loader = re.sub(r'^// @version\s+.*$', '// @version      1.4.8-loader.1', loader, count=1, flags=re.M)
+          loader = loader.replace('facebook-posts-to-wordpress-v1.4.7.user.js', 'facebook-posts-to-wordpress-v1.4.8.user.js')
+          loader_path.write_text(loader, encoding='utf-8')
+
+          # README updates.
+          t_readme = Path('tampermonkey/README.md')
+          text = t_readme.read_text(encoding='utf-8')
+          text = text.replace('v1.4.7', 'v1.4.8')
+          text = text.replace('Do not use the legacy WordPress REST import buttons from the collector for the recommended workflow.', 'The collector now exports JSON only; the obsolete direct WordPress import controls have been removed from the panel.')
+          t_readme.write_text(text, encoding='utf-8')
+
+          root_readme = Path('README.md')
+          text = root_readme.read_text(encoding='utf-8')
+          text = text.replace('v1.4.7', 'v1.4.8')
+          root_readme.write_text(text, encoding='utf-8')
+          PY
+
+          node --check tampermonkey/facebook-posts-to-wordpress-v1.4.8.user.js
+
+      - name: Commit collector v1.4.8
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tampermonkey/facebook-posts-to-wordpress-v1.4.8.user.js tampermonkey/facebook-posts-to-wordpress.user.js tampermonkey/README.md README.md
+          git commit -m 'Add collector v1.4.8'
+          git push origin HEAD:main
