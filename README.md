@@ -14,7 +14,9 @@ Install it directly from GitHub with Tampermonkey using:
 
 `https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/facebook-posts-to-wordpress.user.js`
 
-The userscript includes `@updateURL` and `@downloadURL` pointing to that same raw GitHub file, so Tampermonkey can update the loader automatically when a newer version is published.
+The canonical userscript includes `@updateURL` and `@downloadURL` pointing to that same raw GitHub file, so Tampermonkey can update it automatically when a newer version is published.
+
+The collector is loaded with Tampermonkey's `@require`, not with `eval()` or `new Function()`. This avoids Facebook's Content Security Policy `unsafe-eval` restriction.
 
 For the current workflow:
 
