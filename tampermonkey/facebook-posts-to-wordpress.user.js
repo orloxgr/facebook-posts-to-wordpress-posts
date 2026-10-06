@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name         Facebook Page to WordPress Collector
 // @namespace    iniotakis-tools
-// @version      1.4.7-loader.5
+// @version      1.4.8-loader.1
 // @description  Generic Facebook Page collector for exporting posts to the WordPress importer.
 // @updateURL    https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/facebook-posts-to-wordpress.user.js
 // @downloadURL  https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/facebook-posts-to-wordpress.user.js
-// @require      https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/facebook-posts-to-wordpress-v1.4.7.user.js
+// @require      https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/facebook-posts-to-wordpress-v1.4.8.user.js
 // @match        https://www.facebook.com/*
 // @match        https://facebook.com/*
 // @grant        GM_xmlhttpRequest

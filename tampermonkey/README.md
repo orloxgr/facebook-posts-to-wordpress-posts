@@ -1,6 +1,6 @@
 # Tampermonkey collector
 
-Current collector: **v1.4.7**.
+Current collector: **v1.4.8**.
 
 The collector is generic: it is not tied to a specific Facebook Page or WordPress domain.
 
@@ -20,7 +20,7 @@ After installation, open the Facebook Page you want to archive, for example:
 
 `https://www.facebook.com/example.page`
 
-The readable versioned collector source is kept in this directory as `facebook-posts-to-wordpress-v1.4.7.user.js`.
+The readable versioned collector source is kept in this directory as `facebook-posts-to-wordpress-v1.4.8.user.js`.
 
 ## Workflow
 
@@ -32,7 +32,7 @@ The readable versioned collector source is kept in this directory as `facebook-p
 6. Export the JSON archive.
 7. Use the WordPress plugin in `../wordpress-plugin/` for the actual import.
 
-Do not use the legacy WordPress REST import buttons from the collector for the recommended workflow.
+The collector exports JSON only; the obsolete direct WordPress import controls have been removed from the panel.
 
 ## Generic behavior
 
