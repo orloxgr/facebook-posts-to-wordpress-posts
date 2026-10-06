@@ -1,0 +1,71 @@
+name: Fix empty timestamp hover v1.4.13
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-empty-timestamp-hover-v1.4.13.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch collector
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('tampermonkey/facebook-posts-to-wordpress.user.js')
+          src = path.read_text(encoding='utf-8')
+
+          old_version = '// @version      1.4.12'
+          new_version = '// @version      1.4.13'
+          if old_version not in src:
+              raise SystemExit('Expected collector version 1.4.12 not found')
+          src = src.replace(old_version, new_version, 1)
+
+          old = '''        // Exact markup seen in the supplied Facebook HTML.\n        found = candidates.find(el =>\n            el.matches?.('a[target="_blank"]') &&\n            el.querySelector?.('[aria-labelledby]')\n        );\n\n        return found || null;'''
+
+          new = '''        // Exact markup seen in the supplied Facebook HTML.\n        found = candidates.find(el =>\n            el.matches?.('a[target="_blank"]') &&\n            el.querySelector?.('[aria-labelledby]')\n        );\n\n        if (found) return found;\n\n        /*\n         * Facebook can render the main timestamp anchor structurally but leave\n         * its visible/accessibility text empty until hover. In that state the\n         * header looks like: Page Name · <a target="_blank" href="?__cft__...">\n         * with no text at all. Treat ONLY that same-page, empty __cft__ anchor\n         * as the timestamp element so getDateFromHover() can read its tooltip.\n         */\n        found = candidates.find(el => {\n            if (!el.matches?.('a[target="_blank"]')) return false;\n\n            const href = String(el.getAttribute('href') || '').trim();\n            const text = String(el.innerText || el.textContent || '')\n                .replace(/\\s+/g, ' ')\n                .trim();\n            const aria = String(el.getAttribute('aria-label') || '').trim();\n            const title = String(el.getAttribute('title') || '').trim();\n\n            if (!href || text || aria || title) return false;\n\n            try {\n                const u = new URL(href, location.href);\n\n                return (\n                    u.origin === location.origin &&\n                    u.pathname === location.pathname &&\n                    u.searchParams.has('__cft__[0]') &&\n                    !u.searchParams.has('story_fbid') &&\n                    !u.searchParams.has('fbid')\n                );\n            } catch (_) {\n                return false;\n            }\n        });\n\n        return found || null;'''
+
+          if old not in src:
+              raise SystemExit('findMainTimestampElement fallback block not found')
+          src = src.replace(old, new, 1)
+
+          if 'const VERSION = String(GM_info.script.version);' not in src:
+              raise SystemExit('Single version source missing')
+          if "u.searchParams.has('__cft__[0]')" not in src:
+              raise SystemExit('Empty structural timestamp fallback missing')
+
+          runtime_without_metadata = re.sub(
+              r'^// @version\\s+.*$',
+              '',
+              src,
+              count=1,
+              flags=re.M
+          )
+          stale = re.findall(r'\\bv\\d+\\.\\d+(?:\\.\\d+)?\\b', runtime_without_metadata)
+          if stale:
+              raise SystemExit(f'Hard-coded version strings remain: {stale[:10]}')
+
+          path.write_text(src, encoding='utf-8')
+          PY
+
+          node --check tampermonkey/facebook-posts-to-wordpress.user.js
+
+      - name: Commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tampermonkey/facebook-posts-to-wordpress.user.js
+          git commit -m 'Hover empty structural timestamp links'
+          git push origin HEAD:main
