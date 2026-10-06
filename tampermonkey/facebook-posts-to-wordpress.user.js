@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Facebook Page to WordPress Collector
 // @namespace    iniotakis-tools
-// @version      1.4.10
+// @version      1.4.11
 // @description  Collect Facebook Page posts to JSON for WordPress import, preserving source dates, text and photos.
 // @updateURL    https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/facebook-posts-to-wordpress.user.js
 // @downloadURL  https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/facebook-posts-to-wordpress.user.js
@@ -2540,7 +2540,7 @@
 
         /*
          * Normalize the previously stored archive first.
-         * This also repairs v1.0/v1.1 entries whose keys contained __cft__[0].
+         * This also repairs legacy entries whose keys contained __cft__[0].
          */
         const map = new Map();
         const fingerprintToKey = new Map();
@@ -2682,7 +2682,44 @@
                 `See more → timestamp → collect | archive ${map.size}`
             );
 
-            const expandInfo = await expandArticleBeforeCollect(article);
+            /* Capture the structural timestamp before See more can replace the React subtree. */
+  const timestampBeforeExpand = await waitForTimestampCandidates(
+      article,
+      1600
+  );
+
+  let dateBeforeExpand = {
+      date: null,
+      source: 'main post timestamp unresolved'
+  };
+
+  for (const candidate of timestampBeforeExpand.values || []) {
+      const parsed = parseFbDate(candidate.value);
+
+      if (parsed && !isNaN(parsed)) {
+          dateBeforeExpand = {
+              date: parsed,
+              source: `${candidate.source}: ${candidate.value}`
+          };
+          break;
+      }
+  }
+
+  if (
+      !dateBeforeExpand.date &&
+      timestampBeforeExpand.timestampEl &&
+      timestampBeforeExpand.timestampEl.isConnected
+  ) {
+      const hovered = await getDateFromHover(
+          timestampBeforeExpand.timestampEl
+      );
+
+      if (hovered.date) {
+          dateBeforeExpand = hovered;
+      }
+  }
+
+  const expandInfo = await expandArticleBeforeCollect(article);
 
             if (expandInfo.found) {
                 status(
@@ -2727,7 +2764,11 @@
                     dateInfo = hovered;
                 }
             }
-            const dateValue = dateInfo.date;
+            if (!dateInfo.date && dateBeforeExpand.date) {
+      dateInfo = dateBeforeExpand;
+  }
+
+  const dateValue = dateInfo.date;
             const id = makeStablePostId(permalink, textValue, dateValue, images);
 
             const fingerprint = makePostFingerprint(
@@ -3977,7 +4018,7 @@
         });
         observer.observe(document.documentElement, { childList: true, subtree: true });
 
-        log('Loaded. Scroll the Page, then click Expand + Scan v0.4.');
+        log(`Loaded collector v${VERSION}.`);
     }
 
     if (document.readyState === 'loading') {
