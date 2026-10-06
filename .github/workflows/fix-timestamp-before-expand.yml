@@ -1,0 +1,249 @@
+name: Fix timestamp capture before See more
+
+on: [push]
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: ${{ github.event.head_commit.message == 'Fix timestamp capture before See more' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Patch collector
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('tampermonkey/facebook-posts-to-wordpress.user.js')
+          src = path.read_text(encoding='utf-8')
+
+          if '// @version      1.4.10' not in src:
+              raise SystemExit('Expected collector version 1.4.10 not found')
+          src = src.replace('// @version      1.4.10', '// @version      1.4.11', 1)
+
+          marker = '''    async function collectVisiblePosts(cutoffDate) {'''
+          helper = r'''    async function resolveTimestampDate(article, timeoutMs = 1600) {
+        const debug = await waitForTimestampCandidates(article, timeoutMs);
+
+        let dateInfo = {
+            date: null,
+            source: 'main post timestamp unresolved'
+        };
+
+        for (const candidate of debug.values || []) {
+            const parsed = parseFbDate(candidate.value);
+
+            if (parsed && !isNaN(parsed)) {
+                dateInfo = {
+                    date: parsed,
+                    source: `${candidate.source}: ${candidate.value}`
+                };
+                break;
+            }
+        }
+
+        if (
+            !dateInfo.date &&
+            debug.timestampEl &&
+            debug.timestampEl.isConnected
+        ) {
+            const hovered = await getDateFromHover(debug.timestampEl);
+
+            if (hovered.date) {
+                dateInfo = hovered;
+            }
+        }
+
+        return { dateInfo, debug };
+    }
+
+    function reacquirePostRootByPermalink(previousArticle, permalink) {
+        if (previousArticle?.isConnected) {
+            return previousArticle;
+        }
+
+        const canonical = canonicalFbPostUrl(permalink || '');
+        const sourceId = extractPostId(canonical);
+
+        if (!canonical && !sourceId) {
+            return previousArticle;
+        }
+
+        const matches = getPostContainers()
+            .filter(isTargetPost)
+            .filter(candidate => {
+                const candidatePermalink = getPermalink(candidate);
+                const candidateCanonical = canonicalFbPostUrl(candidatePermalink || '');
+
+                if (sourceId) {
+                    return extractPostId(candidateCanonical) === sourceId;
+                }
+
+                return candidateCanonical === canonical;
+            });
+
+        return matches.length === 1
+            ? matches[0]
+            : previousArticle;
+    }
+
+'''
+
+          if marker not in src:
+              raise SystemExit('collectVisiblePosts marker not found')
+          if 'async function resolveTimestampDate(' in src:
+              raise SystemExit('resolveTimestampDate already exists')
+          src = src.replace(marker, helper + marker, 1)
+
+          pattern = re.compile(
+              r'''            const article = containers\[index\];\n\n'''
+              r'''            status\(\n'''
+              r'''                `Post \$\{index \+ 1\}/\$\{containers\.length\}: ` \+\n'''
+              r'''                `See more → timestamp → collect \| archive \$\{map\.size\}`\n'''
+              r'''            \);\n\n'''
+              r'''            const expandInfo = await expandArticleBeforeCollect\(article\);\n\n'''
+              r'''            if \(expandInfo\.found\) \{[\s\S]*?'''
+              r'''            const dateValue = dateInfo\.date;'''
+          )
+
+          replacement = r'''            const originalArticle = containers[index];
+            let article = originalArticle;
+
+            status(
+                `Post ${index + 1}/${containers.length}: ` +
+                `timestamp → See more → collect | archive ${map.size}`
+            );
+
+            /*
+             * Capture the publication timestamp BEFORE clicking See more.
+             * Facebook can replace/detach the post subtree after expansion.
+             */
+            const permalinkBeforeExpand = getPermalink(article);
+            const beforeTimestamp = await resolveTimestampDate(article, 1600);
+
+            let dateInfo = beforeTimestamp.dateInfo;
+            let timestampDebug = beforeTimestamp.debug;
+            let timestampStage = dateInfo.date
+                ? 'before-expand'
+                : 'unresolved-before-expand';
+
+            const expandInfo = await expandArticleBeforeCollect(article);
+            const connectedAfterExpand = Boolean(originalArticle?.isConnected);
+
+            article = reacquirePostRootByPermalink(
+                originalArticle,
+                permalinkBeforeExpand
+            );
+
+            const reboundAfterExpand = article !== originalArticle;
+
+            if (expandInfo.found) {
+                status(
+                    `Post ${index + 1}/${containers.length}: ` +
+                    `See more ${expandInfo.opened}/${expandInfo.found} | ` +
+                    `archive ${map.size}`
+                );
+            }
+
+            const permalink = getPermalink(article) || permalinkBeforeExpand;
+            const textValue = extractText(article);
+            const images = extractImages(article);
+
+            let afterTimestamp = null;
+
+            /*
+             * If the timestamp was not resolved before expansion, retry on the
+             * current/rebound post root after React has finished updating it.
+             */
+            if (!dateInfo.date) {
+                afterTimestamp = await resolveTimestampDate(article, 1600);
+
+                if (afterTimestamp.dateInfo.date) {
+                    dateInfo = afterTimestamp.dateInfo;
+                    timestampDebug = afterTimestamp.debug;
+                    timestampStage = 'after-expand';
+                } else {
+                    timestampStage = 'unresolved-after-expand';
+                }
+            }
+
+            const debugCandidates = [];
+            const debugSeen = new Set();
+
+            for (const x of [
+                ...(beforeTimestamp.debug?.values || []),
+                ...(afterTimestamp?.debug?.values || [])
+            ]) {
+                const key = `${x.source}|${x.value}`;
+                if (debugSeen.has(key)) continue;
+                debugSeen.add(key);
+                debugCandidates.push({
+                    source: x.source,
+                    value: x.value
+                });
+            }
+
+            const dateValue = dateInfo.date;'''
+
+          src, count = pattern.subn(replacement, src, count=1)
+          if count != 1:
+              raise SystemExit(f'Expected to patch collectVisiblePosts once, patched {count}')
+
+          old_debug = '''                dateDebug: {\n                    candidates: (timestampDebug.values || []).map(x => ({\n                        source: x.source,\n                        value: x.value\n                    })),\n                    hasTimestampElement: Boolean(\n                        timestampDebug.timestampEl\n                    )\n                },'''
+
+          new_debug = '''                dateDebug: {\n                    candidates: debugCandidates,\n                    hasTimestampElement: Boolean(\n                        beforeTimestamp.debug?.timestampEl ||\n                        afterTimestamp?.debug?.timestampEl ||\n                        timestampDebug?.timestampEl\n                    ),\n                    stage: timestampStage,\n                    beforeExpand: {\n                        candidates: (beforeTimestamp.debug?.values || []).map(x => ({\n                            source: x.source,\n                            value: x.value\n                        })),\n                        hasTimestampElement: Boolean(\n                            beforeTimestamp.debug?.timestampEl\n                        )\n                    },\n                    afterExpand: afterTimestamp\n                        ? {\n                            candidates: (afterTimestamp.debug?.values || []).map(x => ({\n                                source: x.source,\n                                value: x.value\n                            })),\n                            hasTimestampElement: Boolean(\n                                afterTimestamp.debug?.timestampEl\n                            )\n                        }\n                        : null,\n                    articleConnectedAfterExpand: connectedAfterExpand,\n                    reboundAfterExpand\n                },'''
+
+          if old_debug not in src:
+              raise SystemExit('dateDebug block not found')
+          src = src.replace(old_debug, new_debug, 1)
+
+          # Remove the remaining stale hard-coded version text; @version is the only literal runtime version.
+          src = src.replace(
+              'This also repairs v1.0/v1.1 entries whose keys contained __cft__[0].',
+              'This also repairs legacy entries whose keys contained __cft__[0].'
+          )
+          src = src.replace(
+              "log('Loaded. Scroll the Page, then click Expand + Scan v0.4.');",
+              "log(`Loaded collector v${VERSION}.`);"
+          )
+
+          # Single-source version guard: no hard-coded runtime-like vX.Y strings remain.
+          runtime_without_metadata = re.sub(
+              r'^// @version\\s+.*$',
+              '',
+              src,
+              count=1,
+              flags=re.M
+          )
+          stale = re.findall(r'\\bv\\d+\\.\\d+(?:\\.\\d+)?\\b', runtime_without_metadata)
+          if stale:
+              raise SystemExit(f'Hard-coded version strings remain: {stale[:10]}')
+
+          if 'const VERSION = String(GM_info.script.version);' not in src:
+              raise SystemExit('Single version source missing')
+          if 'timestamp → See more → collect' not in src:
+              raise SystemExit('Pre-expand timestamp order not installed')
+          if 'reacquirePostRootByPermalink' not in src:
+              raise SystemExit('Post-root reacquire helper missing')
+
+          path.write_text(src, encoding='utf-8')
+          PY
+
+          node --check tampermonkey/facebook-posts-to-wordpress.user.js
+
+      - name: Commit fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tampermonkey/facebook-posts-to-wordpress.user.js
+          git commit -m 'Capture timestamp before expanding posts'
+          git push origin HEAD:main
