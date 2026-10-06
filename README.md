@@ -8,7 +8,7 @@ The project is generic: it is not tied to one Facebook Page or one WordPress sit
 
 ### `tampermonkey/`
 
-Contains the browser collector. Current collector: **v1.4.8**.
+Contains the browser collector. Its version is defined only by the userscript `@version` metadata.
 
 Install it directly from GitHub with Tampermonkey using:
 

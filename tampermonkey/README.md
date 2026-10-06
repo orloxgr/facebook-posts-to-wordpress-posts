@@ -1,6 +1,6 @@
 # Tampermonkey collector
 
-Current collector: **v1.4.8**.
+Current collector version is defined only by the `@version` field in `facebook-posts-to-wordpress.user.js`.
 
 The collector is generic: it is not tied to a specific Facebook Page or WordPress domain.
 
