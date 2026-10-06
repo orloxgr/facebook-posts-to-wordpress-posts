@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.7
+
+- Remove the client-specific default category from the public importer.
+- Use the generic default category **Facebook Import**.
+- Keep all v1.0.6 overwrite, image-quality, duplicate-protection, gallery/lightbox, and resilient-session behavior unchanged.
+
 ## 1.0.6
 
 - Add an **Overwrite existing imported posts** checkbox.
