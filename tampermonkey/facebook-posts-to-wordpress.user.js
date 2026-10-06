@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Facebook Page to WordPress Collector
 // @namespace    iniotakis-tools
-// @version      1.4.15
+// @version      1.4.16
 // @description  Collect Facebook Page posts to JSON for WordPress import, preserving source dates, text and photos.
 // @updateURL    https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/facebook-posts-to-wordpress.user.js
 // @downloadURL  https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/facebook-posts-to-wordpress.user.js
@@ -531,38 +531,49 @@
         return archiveItemFingerprint(item);
     }
 
+    function exactImageSignature(item) {
+        return (item?.images || [])
+            .map(img => stableImageIdentity(img?.url || img))
+            .filter(Boolean)
+            .sort()
+            .join('|');
+    }
+
+    function exactContentSignature(textValue, images = []) {
+        const textFp = makeTextFingerprint(textValue);
+        if (!textFp) return '';
+
+        return `${textFp}|${(images || [])
+            .map(img => stableImageIdentity(img?.url || img))
+            .filter(Boolean)
+            .sort()
+            .join('|')}`;
+    }
+
     function repairUnresolvedExactTextDuplicates(map) {
         const groups = new Map();
 
         for (const [key, item] of map.entries()) {
-            const exactText =
-                String(item?.text || '');
-
+            const exactText = String(item?.text || '');
             if (!exactText) continue;
 
-            if (!groups.has(exactText)) {
-                groups.set(
-                    exactText,
-                    {
-                        dated: [],
-                        unresolved: []
-                    }
-                );
+            const imageSignature = exactImageSignature(item);
+            const groupKey = `${exactText}\u0000${imageSignature}`;
+
+            if (!groups.has(groupKey)) {
+                groups.set(groupKey, {
+                    imageSignature,
+                    dated: [],
+                    unresolved: []
+                });
             }
 
-            const group =
-                groups.get(exactText);
+            const group = groups.get(groupKey);
 
             if (item?.dateIso) {
-                group.dated.push({
-                    key,
-                    item
-                });
+                group.dated.push({ key, item });
             } else {
-                group.unresolved.push({
-                    key,
-                    item
-                });
+                group.unresolved.push({ key, item });
             }
         }
 
@@ -570,9 +581,9 @@
 
         for (const group of groups.values()) {
             /*
-             * Critical safety rule:
-             * exactly ONE dated post must exist for this exact full text.
-             * If 0 or 2+, we do nothing.
+             * Safety rule:
+             * exactly ONE dated snapshot must exist for the exact full text
+             * AND exact image set. If there are 0 or 2+, do nothing.
              */
             if (
                 group.dated.length !== 1 ||
@@ -581,51 +592,62 @@
                 continue;
             }
 
-            const eligibleUnresolved =
-                group.unresolved.filter(({ item }) => {
-                    const permalink =
-                        canonicalFbPostUrl(
-                            item?.permalink || ''
-                        );
+            const anchor = group.dated[0];
+            const anchorPermalink = canonicalFbPostUrl(
+                anchor.item?.permalink || ''
+            );
+            const anchorSourceId =
+                extractPostId(anchorPermalink) ||
+                (
+                    anchor.item?.id &&
+                    !String(anchor.item.id).startsWith('fp-')
+                        ? String(anchor.item.id)
+                        : ''
+                );
 
-                    const sourceId =
-                        extractPostId(permalink) ||
-                        (
-                            item?.id &&
-                            !String(item.id)
-                                .startsWith('fp-')
-                                ? String(item.id)
-                                : ''
-                        );
+            const eligibleUnresolved = group.unresolved.filter(({ item }) => {
+                const permalink = canonicalFbPostUrl(item?.permalink || '');
+                const sourceId =
+                    extractPostId(permalink) ||
+                    (
+                        item?.id &&
+                        !String(item.id).startsWith('fp-')
+                            ? String(item.id)
+                            : ''
+                    );
 
-                    /*
-                     * Repair only identity-less snapshots.
-                     * If an unresolved item has its own real Facebook ID,
-                     * it is never merged just because the text matches.
-                     */
-                    return !sourceId;
-                });
+                // Identity-less snapshots are safe under exact text+image match.
+                if (!sourceId) return true;
 
-            if (!eligibleUnresolved.length) {
-                continue;
-            }
+                // Same real source ID is always the same source post.
+                if (anchorSourceId && sourceId === anchorSourceId) {
+                    return true;
+                }
 
-            const anchor =
-                group.dated[0];
+                /*
+                 * Facebook can expose the same post once as /posts/... and once
+                 * as /photo/?fbid=.... Allow that reconciliation only when the
+                 * exact image set is non-empty as an additional identity check.
+                 */
+                return Boolean(group.imageSignature);
+            });
 
-            let merged =
-                anchor.item;
+            if (!eligibleUnresolved.length) continue;
+
+            let merged = anchor.item;
 
             for (const duplicate of eligibleUnresolved) {
-                merged =
-                    mergeArchiveItems(
-                        merged,
-                        duplicate.item
-                    );
+                /*
+                 * Keep the dated anchor as the incoming side so its canonical
+                 * permalink/source identity and date diagnostics win.
+                 */
+                merged = mergeArchiveItems(
+                    duplicate.item,
+                    merged
+                );
             }
 
-            const newKey =
-                archiveItemKey(merged);
+            const newKey = archiveItemKey(merged);
 
             map.delete(anchor.key);
 
@@ -634,10 +656,7 @@
                 repaired++;
             }
 
-            map.set(
-                newKey,
-                merged
-            );
+            map.set(newKey, merged);
         }
 
         return repaired;
@@ -2654,7 +2673,7 @@
             });
         } catch (_) {}
 
-        // Keep pass 1 quick. Misses are retried by pass 2.
+        // Keep normal collection quick. Misses can be retried manually.
         await new Promise(resolve => setTimeout(resolve, 80));
 
         while (Date.now() - started < timeoutMs) {
@@ -2740,7 +2759,7 @@
         };
     }
 
-    async function collectVisiblePosts(cutoffDate) {
+    async function collectVisiblePosts(cutoffDate, runSeen = null) {
         const archive = loadArchiveRaw();
 
         /*
@@ -2881,6 +2900,22 @@
             if (collectorStopRequested) break;
 
             const article = containers[index];
+
+            const earlyPermalink = getPermalink(article);
+            const earlySourceId = extractPostId(earlyPermalink || '');
+            const earlyKey = earlySourceId
+                ? `id:${earlySourceId}`
+                : canonicalFbPostUrl(earlyPermalink || '');
+
+            if (
+                runSeen &&
+                (
+                    runSeen.nodes?.has(article) ||
+                    (earlyKey && runSeen.keys?.has(earlyKey))
+                )
+            ) {
+                continue;
+            }
 
             status(
                 `Post ${index + 1}/${containers.length}: ` +
@@ -3163,167 +3198,15 @@
              */
             saveArchiveRaw([...map.values()]);
 
+            if (runSeen) {
+                runSeen.nodes?.add(article);
+                if (earlyKey) runSeen.keys?.add(earlyKey);
+            }
+
             article.style.outline = dateValue
                 ? '2px solid #35a853'
                 : '2px solid #d99b25';
             article.dataset.fbwp = dateValue ? 'collected' : 'collected-no-date';
-        }
-
-        /*
-         * PASS 2:
-         * Retry only entries that are still unresolved and still mounted.
-         * Already-dated items are never touched and no duplicate is created.
-         */
-        let secondPassRecovered = 0;
-
-        const unresolvedKeys = new Set(
-            [...map.entries()]
-                .filter(([, item]) => !item.dateIso)
-                .map(([key]) => key)
-        );
-
-        if (unresolvedKeys.size) {
-            status(
-                `Pass 2: retrying ${unresolvedKeys.size} unresolved post(s)...`
-            );
-
-            const retryContainers =
-                getPostContainers().filter(isTargetPost);
-
-            for (
-                let retryIndex = 0;
-                retryIndex < retryContainers.length;
-                retryIndex++
-            ) {
-                if (collectorStopRequested || !unresolvedKeys.size) break;
-
-                const article = retryContainers[retryIndex];
-                const permalink = getPermalink(article);
-                const sourceId = extractPostId(permalink || '');
-
-                let existingKey = null;
-
-                if (
-                    sourceId &&
-                    sourceIdToKey.has(sourceId)
-                ) {
-                    existingKey = sourceIdToKey.get(sourceId);
-                } else {
-                    const candidateKey = archiveItemKey({ permalink });
-                    if (candidateKey && map.has(candidateKey)) {
-                        existingKey = candidateKey;
-                    }
-                }
-
-                if (
-                    !existingKey ||
-                    !unresolvedKeys.has(existingKey)
-                ) {
-                    continue;
-                }
-
-                const existing = map.get(existingKey);
-                if (!existing || existing.dateIso) {
-                    unresolvedKeys.delete(existingKey);
-                    continue;
-                }
-
-                const retryTimestamp =
-                    await waitForTimestampCandidates(article, 800);
-
-                let retryDateInfo = {
-                    date: null,
-                    source: 'main post timestamp unresolved',
-                    hoverDebug: []
-                };
-
-                for (const candidate of retryTimestamp.values || []) {
-                    const parsed = parseFbDate(candidate.value);
-                    if (parsed && !isNaN(parsed)) {
-                        retryDateInfo = {
-                            date: parsed,
-                            source: `${candidate.source}: ${candidate.value}`,
-                            hoverDebug: []
-                        };
-                        break;
-                    }
-                }
-
-                if (
-                    !retryDateInfo.date &&
-                    retryTimestamp.timestampEl &&
-                    retryTimestamp.timestampEl.isConnected
-                ) {
-                    const hovered = await getDateFromHover(
-                        retryTimestamp.timestampEl,
-                        600
-                    );
-                    if (hovered.date) {
-                        retryDateInfo = hovered;
-                    }
-                }
-
-                if (!retryDateInfo.date) {
-                    continue;
-                }
-
-                const retrySnapshot = {
-                    ...existing,
-                    dateIso: retryDateInfo.date.toISOString(),
-                    dateSource: retryDateInfo.source || '',
-                    dateDebug: {
-                        ...(existing.dateDebug || {}),
-                        retryPass: {
-                            candidates: (retryTimestamp.values || []).map(x => ({
-                                source: x.source,
-                                value: x.value
-                            })),
-                            hasTimestampElement: Boolean(
-                                retryTimestamp.timestampEl
-                            ),
-                            hoverDebug: retryDateInfo.hoverDebug || []
-                        }
-                    }
-                };
-
-                const merged = mergeArchiveItems(
-                    existing,
-                    retrySnapshot
-                );
-                const newKey = archiveItemKey(merged);
-
-                if (newKey !== existingKey) {
-                    map.delete(existingKey);
-                }
-                map.set(newKey, merged);
-                fingerprintToKey.set(merged.fingerprint, newKey);
-
-                const mergedSourceId =
-                    extractPostId(merged.permalink || '') ||
-                    (
-                        merged.id &&
-                        !String(merged.id).startsWith('fp-')
-                            ? String(merged.id)
-                            : ''
-                    );
-
-                if (mergedSourceId) {
-                    sourceIdToKey.set(mergedSourceId, newKey);
-                }
-
-                unresolvedKeys.delete(existingKey);
-                secondPassRecovered++;
-                updatedCount++;
-
-                saveArchiveRaw([...map.values()]);
-
-                article.style.outline = '2px solid #35a853';
-                article.dataset.fbwp = 'collected-pass2';
-            }
-
-            log(
-                `Pass 2 recovered ${secondPassRecovered} unresolved post(s).`
-            );
         }
 
         const repairedExactText =
@@ -3354,7 +3237,6 @@
             newCount,
             updatedCount,
             unresolvedCount: actualUnresolved,
-            secondPassRecovered,
             repairedExactText,
             olderCount,
             oldestDate,
@@ -3442,6 +3324,7 @@
         let totalNewThisRun = 0;
         let lastArchiveCount = loadArchiveRaw().length;
         let stopReason = '';
+        const runSeen = { keys: new Set(), nodes: new WeakSet() };
 
         try {
             while (!collectorStopRequested && cycles < 500) {
@@ -3451,7 +3334,7 @@
                     `Cycle ${cycles}: συλλογή φορτωμένων posts...`
                 );
 
-                const result = await collectVisiblePosts(cutoffDate);
+                const result = await collectVisiblePosts(cutoffDate, runSeen);
                 totalNewThisRun += result.newCount;
 
                 const currentCount = loadArchiveRaw().length;
@@ -3539,6 +3422,242 @@
     function stopCollector() {
         collectorStopRequested = true;
         status('STOP requested — ολοκληρώνω το τρέχον post...');
+    }
+
+
+    async function retryUnresolved() {
+        if (busy) return;
+
+        busy = true;
+        collectorStopRequested = false;
+
+        try {
+            const map = new Map();
+
+            for (const raw of loadArchiveRaw()) {
+                const item = mergeArchiveItems({}, raw);
+                const key = archiveItemKey(item);
+
+                if (map.has(key)) {
+                    map.set(
+                        key,
+                        mergeArchiveItems(map.get(key), item)
+                    );
+                } else {
+                    map.set(key, item);
+                }
+            }
+
+            const reconciledBefore =
+                repairUnresolvedExactTextDuplicates(map);
+
+            saveArchiveRaw([...map.values()]);
+
+            let unresolvedEntries = [...map.entries()]
+                .filter(([, item]) => !item.dateIso);
+
+            if (!unresolvedEntries.length) {
+                status(
+                    `Retry: 0 unresolved. Reconciled duplicates: ${reconciledBefore}.`,
+                    'ok'
+                );
+                return;
+            }
+
+            const cutoffValue = GM_getValue(
+                CFG.cutoffStorageKey,
+                ''
+            ) || '';
+            const cutoffDate = parseCutoffInput(cutoffValue);
+
+            const bySourceId = new Map();
+            const byPermalink = new Map();
+            const byContent = new Map();
+
+            for (const [key, item] of unresolvedEntries) {
+                const permalink = canonicalFbPostUrl(item.permalink || '');
+                const sourceId =
+                    extractPostId(permalink) ||
+                    (
+                        item.id &&
+                        !String(item.id).startsWith('fp-')
+                            ? String(item.id)
+                            : ''
+                    );
+
+                if (sourceId) bySourceId.set(sourceId, key);
+                if (permalink) byPermalink.set(permalink, key);
+
+                const contentKey = exactContentSignature(
+                    item.text || '',
+                    item.images || []
+                );
+
+                if (contentKey) {
+                    if (!byContent.has(contentKey)) {
+                        byContent.set(contentKey, []);
+                    }
+                    byContent.get(contentKey).push(key);
+                }
+            }
+
+            const containers = getPostContainers().filter(isTargetPost);
+            let matched = 0;
+            let recovered = 0;
+            let removedOlder = 0;
+
+            status(
+                `Retry unresolved: ${unresolvedEntries.length} pending, ` +
+                `${containers.length} mounted posts...`,
+                'info'
+            );
+
+            for (let i = 0; i < containers.length; i++) {
+                if (collectorStopRequested) break;
+
+                const article = containers[i];
+                const permalink = getPermalink(article);
+                const canonical = canonicalFbPostUrl(permalink || '');
+                const sourceId = extractPostId(canonical || permalink || '');
+
+                let existingKey = null;
+
+                if (sourceId && bySourceId.has(sourceId)) {
+                    existingKey = bySourceId.get(sourceId);
+                } else if (canonical && byPermalink.has(canonical)) {
+                    existingKey = byPermalink.get(canonical);
+                }
+
+                if (!existingKey) {
+                    const textValue = extractText(article);
+                    const images = extractImages(article);
+                    const contentKey = exactContentSignature(
+                        textValue,
+                        images
+                    );
+                    const matches = contentKey
+                        ? (byContent.get(contentKey) || [])
+                        : [];
+
+                    if (matches.length === 1) {
+                        existingKey = matches[0];
+                    }
+                }
+
+                if (!existingKey) continue;
+
+                const existing = map.get(existingKey);
+                if (!existing || existing.dateIso) continue;
+
+                matched++;
+                status(
+                    `Retry unresolved ${matched}/${unresolvedEntries.length}: ` +
+                    `waiting for timestamp...`,
+                    'info'
+                );
+
+                const timestamp = await waitForTimestampCandidates(
+                    article,
+                    2500
+                );
+
+                let dateInfo = {
+                    date: null,
+                    source: 'main post timestamp unresolved',
+                    hoverDebug: []
+                };
+
+                for (const candidate of timestamp.values || []) {
+                    const parsed = parseFbDate(candidate.value);
+                    if (parsed && !isNaN(parsed)) {
+                        dateInfo = {
+                            date: parsed,
+                            source: `${candidate.source}: ${candidate.value}`,
+                            hoverDebug: []
+                        };
+                        break;
+                    }
+                }
+
+                if (
+                    !dateInfo.date &&
+                    timestamp.timestampEl &&
+                    timestamp.timestampEl.isConnected
+                ) {
+                    const hovered = await getDateFromHover(
+                        timestamp.timestampEl,
+                        1600
+                    );
+
+                    if (hovered.date) {
+                        dateInfo = hovered;
+                    }
+                }
+
+                if (!dateInfo.date) continue;
+
+                if (
+                    cutoffDate &&
+                    startOfDay(dateInfo.date) < cutoffDate
+                ) {
+                    map.delete(existingKey);
+                    removedOlder++;
+                    continue;
+                }
+
+                const retrySnapshot = {
+                    ...existing,
+                    dateIso: dateInfo.date.toISOString(),
+                    dateSource: dateInfo.source || '',
+                    dateDebug: {
+                        ...(existing.dateDebug || {}),
+                        manualRetry: {
+                            candidates: (timestamp.values || []).map(x => ({
+                                source: x.source,
+                                value: x.value
+                            })),
+                            hasTimestampElement: Boolean(timestamp.timestampEl),
+                            hoverDebug: dateInfo.hoverDebug || []
+                        }
+                    }
+                };
+
+                const merged = mergeArchiveItems(existing, retrySnapshot);
+                const newKey = archiveItemKey(merged);
+
+                if (newKey !== existingKey) {
+                    map.delete(existingKey);
+                }
+                map.set(newKey, merged);
+                recovered++;
+            }
+
+            const reconciledAfter =
+                repairUnresolvedExactTextDuplicates(map);
+
+            saveArchiveRaw([...map.values()]);
+
+            const remaining = [...map.values()]
+                .filter(item => !item.dateIso)
+                .length;
+
+            status(
+                `Retry DONE: ${recovered} recovered, ` +
+                `${removedOlder} older-than-cutoff removed, ` +
+                `${reconciledBefore + reconciledAfter} duplicate snapshots reconciled, ` +
+                `${remaining} unresolved remain. ` +
+                `Matched ${matched}/${unresolvedEntries.length} in mounted DOM.`,
+                remaining ? 'warn' : 'ok'
+            );
+        } catch (e) {
+            console.error('[FB→WP] Retry unresolved failed:', e);
+            status(e.message || String(e), 'error');
+            alert('Retry unresolved: ' + (e.message || e));
+        } finally {
+            busy = false;
+            collectorStopRequested = false;
+            updateArchiveUi();
+        }
     }
 
 
@@ -4297,6 +4416,13 @@
                 STOP
             </button>
 
+            <button
+                id="fbwp-retry-unresolved"
+                style="width:100%;margin-top:5px;padding:7px;cursor:pointer;font-weight:700"
+            >
+                Retry unresolved
+            </button>
+
             <div
                 id="fbwp-archive-count"
                 style="margin-top:7px;font-size:11px;color:#ddd"
@@ -4321,7 +4447,7 @@
                 id="fbwp-status"
                 style="margin-top:8px;font-size:12px;line-height:1.35;color:#d9fdd3"
             >
-                Κάθε post: See more → timestamp → collect. Hard stop στο cutoff. Fresh state only.
+                Collect = fast pass. Retry unresolved = slower retry μόνο για unresolved. Hard stop στο cutoff. Fresh state only.
             </div>
 
             <div style="margin-top:7px;font-size:10px;color:#bbb">
@@ -4355,6 +4481,10 @@
         document
             .getElementById('fbwp-stop')
             .addEventListener('click', stopCollector);
+
+        document
+            .getElementById('fbwp-retry-unresolved')
+            .addEventListener('click', retryUnresolved);
 
 
         document
