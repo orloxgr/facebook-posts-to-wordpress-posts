@@ -1,20 +1,19 @@
-name: Add v1.4.12 timestamp diagnostics
+name: Add timestamp DOM diagnostics
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
+    paths:
+      - '.github/workflows/add-timestamp-dom-diagnostics.yml'
 
 permissions:
   contents: write
 
 jobs:
   patch:
-    if: github.event.head_commit.message == 'Add v1.4.12 timestamp diagnostics'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Patch collector
         shell: bash
@@ -23,45 +22,30 @@ jobs:
           python3 <<'PY'
           from pathlib import Path
 
-          path = Path('tampermonkey/facebook-posts-to-wordpress.user.js')
-          src = path.read_text(encoding='utf-8')
+          p = Path('tampermonkey/facebook-posts-to-wordpress.user.js')
+          s = p.read_text(encoding='utf-8')
 
-          old_version = '// @version      1.4.11'
-          new_version = '// @version      1.4.12'
-          if old_version not in src:
-              raise SystemExit('Expected collector version 1.4.11 not found')
-          src = src.replace(old_version, new_version, 1)
+          if '// @version      1.4.11' not in s:
+              raise SystemExit('Expected v1.4.11')
+          s = s.replace('// @version      1.4.11', '// @version      1.4.12', 1)
 
-          collect_marker = '    async function collectVisiblePosts(cutoffDate) {'
-          collect_pos = src.find(collect_marker)
-          if collect_pos < 0:
+          marker = '    async function collectVisiblePosts(cutoffDate) {'
+          pos = s.find(marker)
+          if pos < 0:
               raise SystemExit('collectVisiblePosts not found')
 
           helper = r'''    function collectTimestampDomDiagnostics(article) {
         if (!article) return null;
 
-        const profile = article.querySelector(
-            '[data-ad-rendering-role="profile_name"]'
-        );
-        const story = article.querySelector(
-            '[data-ad-rendering-role="story_message"]'
-        );
-
+        const profile = article.querySelector('[data-ad-rendering-role="profile_name"]');
+        const story = article.querySelector('[data-ad-rendering-role="story_message"]');
         let headerScope = profile || article;
 
         if (profile) {
             let current = profile;
-
-            while (
-                current.parentElement &&
-                current.parentElement !== article
-            ) {
+            while (current.parentElement && current.parentElement !== article) {
                 const parent = current.parentElement;
-
-                if (story && parent.contains(story)) {
-                    break;
-                }
-
+                if (story && parent.contains(story)) break;
                 headerScope = parent;
                 current = parent;
             }
@@ -69,17 +53,11 @@ jobs:
 
         function describe(el) {
             if (!el || el.nodeType !== 1) return null;
-
-            const href = el.getAttribute('href');
-            const text = String(el.innerText || el.textContent || '')
-                .replace(/\s+/g, ' ')
-                .trim()
-                .slice(0, 240);
-
             return {
                 tag: el.tagName,
-                text,
-                href: href || null,
+                text: String(el.innerText || el.textContent || '')
+                    .replace(/\s+/g, ' ').trim().slice(0, 240),
+                href: el.getAttribute('href'),
                 role: el.getAttribute('role'),
                 ariaLabel: el.getAttribute('aria-label'),
                 ariaLabelledby: el.getAttribute('aria-labelledby'),
@@ -93,26 +71,16 @@ jobs:
         }
 
         const selector = [
-            'a',
-            'time',
-            'abbr',
-            '[role="link"]',
-            '[role="button"]',
-            '[aria-label]',
-            '[aria-labelledby]',
-            '[title]',
-            '[data-utime]',
-            '[datetime]'
+            'a', 'time', 'abbr', '[role="link"]', '[role="button"]',
+            '[aria-label]', '[aria-labelledby]', '[title]', '[data-utime]', '[datetime]'
         ].join(',');
 
         const elements = [];
         const seen = new Set();
-
         for (const el of headerScope.querySelectorAll(selector)) {
             if (elements.length >= 120) break;
             if (seen.has(el)) continue;
             seen.add(el);
-
             const item = describe(el);
             if (item) elements.push(item);
         }
@@ -120,7 +88,6 @@ jobs:
         const profileAncestors = [];
         let current = profile;
         let depth = 0;
-
         while (current && depth < 8) {
             const item = describe(current);
             if (item) profileAncestors.push(item);
@@ -139,13 +106,12 @@ jobs:
 
 '''
 
-          if 'function collectTimestampDomDiagnostics(' in src:
-              raise SystemExit('Timestamp DOM diagnostics helper already exists')
+          if 'function collectTimestampDomDiagnostics(' in s:
+              raise SystemExit('diagnostics helper already exists')
+          s = s[:pos] + helper + s[pos:]
+          pos += len(helper)
 
-          src = src[:collect_pos] + helper + src[collect_pos:]
-          collect_pos += len(helper)
-
-          old_debug = '''                dateDebug: {
+          old = '''                dateDebug: {
                     candidates: (timestampDebug.values || []).map(x => ({
                         source: x.source,
                         value: x.value
@@ -155,7 +121,7 @@ jobs:
                     )
                 },'''
 
-          new_debug = '''                dateDebug: {
+          new = '''                dateDebug: {
                     candidates: [
                         ...(timestampBeforeExpand.values || []),
                         ...(timestampDebug.values || [])
@@ -172,40 +138,29 @@ jobs:
                             source: x.source,
                             value: x.value
                         })),
-                        hasTimestampElement: Boolean(
-                            timestampBeforeExpand.timestampEl
-                        )
+                        hasTimestampElement: Boolean(timestampBeforeExpand.timestampEl)
                     },
                     afterExpand: {
                         candidates: (timestampDebug.values || []).map(x => ({
                             source: x.source,
                             value: x.value
                         })),
-                        hasTimestampElement: Boolean(
-                            timestampDebug.timestampEl
-                        )
+                        hasTimestampElement: Boolean(timestampDebug.timestampEl)
                     },
-                    dom: dateValue
-                        ? null
-                        : collectTimestampDomDiagnostics(article)
+                    dom: dateValue ? null : collectTimestampDomDiagnostics(article)
                 },'''
 
-          debug_pos = src.find(old_debug, collect_pos)
-          if debug_pos < 0:
-              raise SystemExit('collectVisiblePosts dateDebug block not found')
-          src = src[:debug_pos] + new_debug + src[debug_pos + len(old_debug):]
+          dpos = s.find(old, pos)
+          if dpos < 0:
+              raise SystemExit('dateDebug block not found')
+          s = s[:dpos] + new + s[dpos + len(old):]
 
-          if 'const VERSION = String(GM_info.script.version);' not in src:
-              raise SystemExit('Single version source missing')
-          if 'collectTimestampDomDiagnostics(article)' not in src:
-              raise SystemExit('Diagnostic capture missing')
-
-          path.write_text(src, encoding='utf-8')
+          p.write_text(s, encoding='utf-8')
           PY
 
           node --check tampermonkey/facebook-posts-to-wordpress.user.js
 
-      - name: Commit collector
+      - name: Commit
         shell: bash
         run: |
           set -euo pipefail
