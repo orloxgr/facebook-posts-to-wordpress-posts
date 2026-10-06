@@ -1,29 +1,37 @@
 # Tampermonkey collector
 
-Current collector: **v1.4.6**.
+Current collector: **v1.4.7**.
+
+The collector is generic: it is not tied to a specific Facebook Page or WordPress domain.
 
 ## Install
 
-Install `facebook-posts-to-wordpress.user.js` in Tampermonkey and open:
+Install `facebook-posts-to-wordpress.user.js` in Tampermonkey, then open the Facebook Page you want to archive, for example:
 
-`https://www.facebook.com/dimos.alonnisou`
+`https://www.facebook.com/example.page`
 
-The small userscript loader reconstructs the exact tested v1.4.6 collector from the versioned payload files in `payload/` and verifies its SHA-256 before running it.
-
-Expected collector source SHA-256:
-
-`c934e99d176afcdba464720919dbbc8a7198ca6edeb58d04399212101fa05b98`
+The loader verifies the known collector payload before applying the generic v1.4.7 adaptation. It aborts if an expected patch cannot be applied, rather than running a partially patched collector.
 
 ## Workflow
 
-1. Set the cutoff date.
-2. Run **Collect**.
-3. Wait until the cutoff is reached.
-4. Confirm `unresolved: 0` and `image-risk: 0`.
-5. Export the JSON archive.
-6. Use the WordPress plugin in `../wordpress-plugin/` for the actual import.
+1. Open the Facebook Page you want to migrate.
+2. Set the cutoff date.
+3. Run **Collect**.
+4. Wait until the cutoff is reached.
+5. Confirm `unresolved: 0` and `image-risk: 0`.
+6. Export the JSON archive.
+7. Use the WordPress plugin in `../wordpress-plugin/` for the actual import.
 
-Do not use the legacy WordPress REST import buttons from the collector for the current workflow.
+Do not use the legacy WordPress REST import buttons from the collector for the recommended workflow.
+
+## Generic behavior
+
+- Runs on Facebook Pages instead of one hard-coded Page URL.
+- Post author/root checks use the author shown in each post rather than a hard-coded Page name.
+- Facebook permalink detection accepts normal Page post/photo/video/reel URL shapes.
+- Collector state is isolated per Facebook Page and per collector version.
+- Export filenames use the current Page context instead of a client-specific prefix.
+- The legacy direct WordPress REST importer, if used, asks for the WordPress site URL instead of using a hard-coded domain.
 
 ## Collector rules
 
