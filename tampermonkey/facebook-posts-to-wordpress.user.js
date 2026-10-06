@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Facebook Page to WordPress Collector
 // @namespace    iniotakis-tools
-// @version      1.4.12
+// @version      1.4.13
 // @description  Collect Facebook Page posts to JSON for WordPress import, preserving source dates, text and photos.
 // @updateURL    https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/facebook-posts-to-wordpress.user.js
 // @downloadURL  https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/facebook-posts-to-wordpress.user.js
@@ -1526,6 +1526,42 @@
             el.matches?.('a[target="_blank"]') &&
             el.querySelector?.('[aria-labelledby]')
         );
+
+        if (found) return found;
+
+        /*
+         * Facebook can render the main timestamp anchor structurally but leave
+         * its visible/accessibility text empty until hover. In that state the
+         * header looks like: Page Name · <a target="_blank" href="?__cft__...">
+         * with no text at all. Treat ONLY that same-page, empty __cft__ anchor
+         * as the timestamp element so getDateFromHover() can read its tooltip.
+         */
+        found = candidates.find(el => {
+            if (!el.matches?.('a[target="_blank"]')) return false;
+
+            const href = String(el.getAttribute('href') || '').trim();
+            const text = String(el.innerText || el.textContent || '')
+                .replace(/\s+/g, ' ')
+                .trim();
+            const aria = String(el.getAttribute('aria-label') || '').trim();
+            const title = String(el.getAttribute('title') || '').trim();
+
+            if (!href || text || aria || title) return false;
+
+            try {
+                const u = new URL(href, location.href);
+
+                return (
+                    u.origin === location.origin &&
+                    u.pathname === location.pathname &&
+                    u.searchParams.has('__cft__[0]') &&
+                    !u.searchParams.has('story_fbid') &&
+                    !u.searchParams.has('fbid')
+                );
+            } catch (_) {
+                return false;
+            }
+        });
 
         return found || null;
     }
