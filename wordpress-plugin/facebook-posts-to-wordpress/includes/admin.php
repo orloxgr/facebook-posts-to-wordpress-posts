@@ -46,7 +46,7 @@ function fbwp_render_admin_page() {
         <div class="fbwp-panel">
             <h2>2. Import settings</h2>
             <table class="form-table" role="presentation">
-                <tr><th><label for="fbwp-category">Category</label></th><td><input type="text" class="regular-text" id="fbwp-category" value="Δελτία Τύπου - Νέα - Ανακοινώσεις"></td></tr>
+                <tr><th><label for="fbwp-category">Category</label></th><td><input type="text" class="regular-text" id="fbwp-category" value="Facebook Import"></td></tr>
                 <tr><th><label for="fbwp-status">Post status</label></th><td><select id="fbwp-status"><option value="publish" selected>Publish</option><option value="draft">Draft</option></select></td></tr>
                 <tr><th>Existing posts</th><td><label><input type="checkbox" id="fbwp-overwrite" value="1"> Overwrite existing imported posts</label><p class="description">When enabled, matching posts are updated in place and their imported images are replaced. Leave unchecked to skip existing posts.</p></td></tr>
             </table>
