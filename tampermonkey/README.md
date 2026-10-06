@@ -12,13 +12,15 @@ Install directly from GitHub using the raw userscript URL:
 
 With Tampermonkey installed, opening that URL should offer the userscript installation screen.
 
-The loader includes `@updateURL` and `@downloadURL` pointing to the same raw GitHub file, so Tampermonkey can check for and install future loader updates automatically when its version changes.
+The canonical userscript includes `@updateURL` and `@downloadURL` pointing to the same raw GitHub file, so Tampermonkey can check for future updates automatically.
+
+The canonical script loads the versioned collector with Tampermonkey's `@require`. It does **not** use `eval()` or `new Function()`, so Facebook's Content Security Policy does not block the collector with an `unsafe-eval` error.
 
 After installation, open the Facebook Page you want to archive, for example:
 
 `https://www.facebook.com/example.page`
 
-The loader fetches the versioned generic v1.4.7 payload and verifies its SHA-256 before running it. The readable v1.4.7 collector source is also included in this directory.
+The readable versioned collector source is kept in this directory as `facebook-posts-to-wordpress-v1.4.7.user.js`.
 
 ## Workflow
 
