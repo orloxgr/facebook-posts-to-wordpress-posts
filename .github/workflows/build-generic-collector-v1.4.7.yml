@@ -1,0 +1,86 @@
+name: Build generic collector v1.4.7
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: github.event.head_commit.message == 'Build generic collector v1.4.7'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate generic collector source and payload
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const vm = require('vm');
+          const zlib = require('zlib');
+          const crypto = require('crypto');
+
+          let loader = fs.readFileSync('tampermonkey/facebook-posts-to-wordpress.user.js', 'utf8');
+          loader = loader.replace(
+            /\n\s*boot\(\)\.catch\([\s\S]*?\n\s*\}\);\n\}\)\(\);\s*$/,
+            '\n    globalThis.__genericize = genericize;\n})();\n'
+          );
+
+          const context = {
+            console,
+            URL,
+            TextEncoder,
+            crypto: crypto.webcrypto
+          };
+          vm.createContext(context);
+          vm.runInContext(loader, context);
+
+          if (typeof context.__genericize !== 'function') {
+            throw new Error('Could not expose genericize().');
+          }
+
+          const names = [1, 2, 3, 4, 5].map(
+            n => `tampermonkey/payload/v1.4.6.part${String(n).padStart(2, '0')}.b64`
+          );
+          const encoded = names.map(name => fs.readFileSync(name, 'utf8').trim()).join('');
+          const original = zlib.gunzipSync(Buffer.from(encoded, 'base64')).toString('utf8');
+          const generic = context.__genericize(original);
+
+          new vm.Script(generic);
+
+          const hash = crypto.createHash('sha256').update(generic, 'utf8').digest('hex');
+          const expected = '8d51223f55c2e77893085788dad0113176313f2f7c38ff93881bc6d9ebb23aaf';
+          if (hash !== expected) {
+            throw new Error(`Unexpected generic collector hash: ${hash}`);
+          }
+
+          fs.writeFileSync('tampermonkey/facebook-posts-to-wordpress-v1.4.7.user.js', generic, 'utf8');
+          fs.writeFileSync(
+            'tampermonkey/payload/v1.4.7.b64',
+            zlib.gzipSync(Buffer.from(generic, 'utf8'), { level: 9 }).toString('base64'),
+            'utf8'
+          );
+          console.log(`Generic collector SHA-256: ${hash}`);
+          NODE
+
+      - name: Ensure client-specific values are absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -Eqi 'dimos\.alonnisou|alonissos\.gov\.gr|Δήμος Αλοννήσου|alonissos_fbwp_|alonissos-facebook-archive-' tampermonkey/facebook-posts-to-wordpress-v1.4.7.user.js
+          node --check tampermonkey/facebook-posts-to-wordpress-v1.4.7.user.js
+
+      - name: Commit generated collector
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tampermonkey/facebook-posts-to-wordpress-v1.4.7.user.js tampermonkey/payload/v1.4.7.b64
+          git commit -m 'Add generic collector v1.4.7 payload'
+          git push origin HEAD:main
