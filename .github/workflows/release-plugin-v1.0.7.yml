@@ -1,0 +1,75 @@
+name: Release WordPress plugin v1.0.7
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.event.head_commit.message == 'Release WordPress plugin v1.0.7'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: PHP syntax check
+        shell: bash
+        run: |
+          set -euo pipefail
+          find wordpress-plugin/facebook-posts-to-wordpress -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: JavaScript syntax check
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check wordpress-plugin/facebook-posts-to-wordpress/assets/admin.js
+
+      - name: Ensure plugin is generic
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -RniE 'dimos\.alonnisou|alonissos\.gov\.gr|Δήμος Αλοννήσου|Δελτία Τύπου - Νέα - Ανακοινώσεις|alonissos_fbwp_' wordpress-plugin/facebook-posts-to-wordpress
+
+      - name: Build plugin ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd wordpress-plugin
+          zip -qr ../facebook-posts-to-wordpress-v1.0.7.zip facebook-posts-to-wordpress
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create plugin-v1.0.7 \
+            facebook-posts-to-wordpress-v1.0.7.zip \
+            --title 'WordPress Plugin v1.0.7' \
+            --notes 'Plugin-only release. Makes the importer public/generic by removing the client-specific default category. Includes overwrite mode, high-resolution Facebook image recovery, duplicate protection, galleries/lightbox, and resilient import sessions.'
+
+      - name: Remove old plugin releases and tags
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tag in \
+            plugin-v1.0.0 \
+            plugin-v1.0.1 \
+            plugin-v1.0.2 \
+            plugin-v1.0.3 \
+            plugin-v1.0.4 \
+            plugin-v1.0.5 \
+            plugin-v1.0.6
+          do
+            if gh release view "$tag" >/dev/null 2>&1; then
+              gh release delete "$tag" --cleanup-tag -y
+            else
+              git push origin ":refs/tags/$tag" 2>/dev/null || true
+            fi
+          done
