@@ -26,39 +26,16 @@ jobs:
           path = Path('tampermonkey/facebook-posts-to-wordpress.user.js')
           src = path.read_text(encoding='utf-8')
           
-          old_version = '// @version      1.4.14'
-          new_version = '// @version      1.4.15'
-          if old_version not in src:
+          if '// @version      1.4.14' not in src:
               raise SystemExit('Expected collector version 1.4.14 not found')
-          src = src.replace(old_version, new_version, 1)
+          src = src.replace('// @version      1.4.14', '// @version      1.4.15', 1)
           
-          old_wait = '''    async function waitForTimestampCandidates(article, timeoutMs = 1600) {
-              const started = Date.now();
-              let last = { values: [], timestampEl: null };
+          wait_start = src.find('    async function waitForTimestampCandidates(article, timeoutMs = 1600) {')
+          wait_end = src.find('\n\n    function collectTimestampDomDiagnostics(article) {', wait_start)
+          if wait_start < 0 or wait_end < 0:
+              raise SystemExit('waitForTimestampCandidates boundaries not found')
           
-              try {
-                  article.scrollIntoView({
-                      block: 'center',
-                      inline: 'nearest'
-                  });
-              } catch (_) {}
-          
-              // Give Facebook a moment to hydrate the header for this post.
-              await new Promise(resolve => setTimeout(resolve, 220));
-          
-              while (Date.now() - started < timeoutMs) {
-                  last = collectMainTimestampCandidates(article);
-          
-                  if (last.values.length) {
-                      return last;
-                  }
-          
-                  await new Promise(resolve => setTimeout(resolve, 160));
-              }
-          
-              return last;
-          }'''
-          new_wait = '''    async function waitForTimestampCandidates(article, timeoutMs = 400) {
+          new_wait = """    async function waitForTimestampCandidates(article, timeoutMs = 400) {
               const started = Date.now();
               let last = { values: [], timestampEl: null };
           
@@ -83,17 +60,15 @@ jobs:
               }
           
               return last;
-          }'''
-          if old_wait not in src:
-              raise SystemExit('waitForTimestampCandidates block not found')
-          src = src.replace(old_wait, new_wait, 1)
+          }"""
+          src = src[:wait_start] + new_wait + src[wait_end:]
           
           hover_start = src.find('    async function getDateFromHover(timestampEl) {')
           hover_end = src.find('\n    async function extractDate(article) {', hover_start)
           if hover_start < 0 or hover_end < 0:
-              raise SystemExit('getDateFromHover block not found')
+              raise SystemExit('getDateFromHover boundaries not found')
           
-          new_hover = r'''    async function getDateFromHover(timestampEl, timeoutMs = 600) {
+          new_hover = r"""    async function getDateFromHover(timestampEl, timeoutMs = 600) {
               if (!timestampEl) {
                   return { date: null, source: '', hoverDebug: [] };
               }
@@ -179,7 +154,6 @@ jobs:
               }
           
               dispatchHover(timestampEl);
-          
               const started = Date.now();
           
               while (Date.now() - started < timeoutMs) {
@@ -226,293 +200,281 @@ jobs:
                   hoverDebug: [...observed].slice(0, 8)
               };
           }
-          '''
+          """
           src = src[:hover_start] + new_hover + src[hover_end:]
           
           collect_start = src.find('    async function collectVisiblePosts(cutoffDate) {')
           collect_end = src.find('\n    function waitForFeedChange(', collect_start)
           if collect_start < 0 or collect_end < 0:
-              raise SystemExit('collectVisiblePosts block not found')
-          
+              raise SystemExit('collectVisiblePosts boundaries not found')
           block = src[collect_start:collect_end]
           
-          if block.count('article,\n      1600') != 1:
-              raise SystemExit('Expected one pre-expand 1600 wait')
-          block = block.replace('article,\n      1600', 'article,\n      400', 1)
+          block, n1 = re.subn(
+              r'(const timestampBeforeExpand = await waitForTimestampCandidates\(\s*article,\s*)1600(\s*\);)',
+              r'\g<1>400\g<2>',
+              block,
+              count=1
+          )
+          if n1 != 1:
+              raise SystemExit(f'Pre-expand wait replacement count={n1}')
           
-          if block.count('article,\n                1600') != 1:
-              raise SystemExit('Expected one post-expand 1600 wait')
-          block = block.replace('article,\n                1600', 'article,\n                400', 1)
+          block, n2 = re.subn(
+              r'(const timestampDebug = await waitForTimestampCandidates\(\s*article,\s*)1600(\s*\);)',
+              r'\g<1>400\g<2>',
+              block,
+              count=1
+          )
+          if n2 != 1:
+              raise SystemExit(f'Post-expand wait replacement count={n2}')
           
-          pre_hover = '''  if (
-              !dateBeforeExpand.date &&
-              timestampBeforeExpand.timestampEl &&
-              timestampBeforeExpand.timestampEl.isConnected
-          ) {
-              const hovered = await getDateFromHover(
-                  timestampBeforeExpand.timestampEl
+          block, n3 = re.subn(
+              r"""\n\s*if \(\s*!dateBeforeExpand\.date &&\s*timestampBeforeExpand\.timestampEl &&\s*timestampBeforeExpand\.timestampEl\.isConnected\s*\) \{\s*const hovered = await getDateFromHover\(\s*timestampBeforeExpand\.timestampEl\s*\);\s*if \(hovered\.date\) \{\s*dateBeforeExpand = hovered;\s*\}\s*\}\s*""",
+              '\n',
+              block,
+              count=1
+          )
+          if n3 != 1:
+              raise SystemExit(f'Pre-expand hover removal count={n3}')
+          
+          block, n4 = re.subn(
+              r"""\n\s*if \(!dateInfo\.date && timestampDebug\.timestampEl\) \{\s*const hovered = await getDateFromHover\(\s*timestampDebug\.timestampEl\s*\);\s*if \(hovered\.date\) \{\s*dateInfo = hovered;\s*\}\s*\}\s*""",
+              '\n',
+              block,
+              count=1
+          )
+          if n4 != 1:
+              raise SystemExit(f'Post-expand hover removal count={n4}')
+          
+          marker = """        const repairedExactText =
+              repairUnresolvedExactTextDuplicates(
+                  map
               );
-          
-              if (hovered.date) {
-                  dateBeforeExpand = hovered;
-              }
-          }
-          
-          '''
-          if pre_hover not in block:
-              raise SystemExit('Pre-expand hover block not found')
-          block = block.replace(pre_hover, '', 1)
-          
-          post_hover = '''            if (!dateInfo.date && timestampDebug.timestampEl) {
-                          const hovered = await getDateFromHover(
-                              timestampDebug.timestampEl
-                          );
-          
-                          if (hovered.date) {
-                              dateInfo = hovered;
-                          }
-                      }
-          '''
-          if post_hover not in block:
-              raise SystemExit('Post-expand hover block not found')
-          block = block.replace(post_hover, '', 1)
-          
-          marker = '''        const repairedExactText =
-                      repairUnresolvedExactTextDuplicates(
-                          map
-                      );
-          '''
+          """
           if marker not in block:
               raise SystemExit('Second-pass insertion marker not found')
           
-          second_pass = r'''        /*
-                   * PASS 2:
-                   * Retry ONLY archive entries that are still unresolved and are still
-                   * mounted in the current Facebook DOM. Existing dated entries are never
-                   * touched and no duplicate archive item is created.
-                   */
-                  let secondPassRecovered = 0;
+          second_pass = r"""        /*
+           * PASS 2:
+           * Retry ONLY unresolved archive entries that are still mounted.
+           * Dated entries are never touched and no duplicate item is created.
+           */
+          let secondPassRecovered = 0;
           
-                  const unresolvedKeys = new Set(
-                      [...map.entries()]
-                          .filter(([, item]) => !item.dateIso)
-                          .map(([key]) => key)
-                  );
+          const unresolvedKeys = new Set(
+              [...map.entries()]
+                  .filter(([, item]) => !item.dateIso)
+                  .map(([key]) => key)
+          );
           
-                  if (unresolvedKeys.size) {
-                      status(
-                          `Pass 2: retrying ${unresolvedKeys.size} unresolved post(s)...`
-                      );
+          if (unresolvedKeys.size) {
+              status(
+                  `Pass 2: retrying ${unresolvedKeys.size} unresolved post(s)...`
+              );
           
-                      const retryContainers =
-                          getPostContainers().filter(isTargetPost);
+              const retryContainers =
+                  getPostContainers().filter(isTargetPost);
           
-                      for (
-                          let retryIndex = 0;
-                          retryIndex < retryContainers.length;
-                          retryIndex++
+              for (
+                  let retryIndex = 0;
+                  retryIndex < retryContainers.length;
+                  retryIndex++
+              ) {
+                  if (collectorStopRequested || !unresolvedKeys.size) break;
+          
+                  const article = retryContainers[retryIndex];
+                  const permalink = getPermalink(article);
+                  const sourceId = extractPostId(permalink || '');
+          
+                  let existingKey = null;
+          
+                  if (
+                      sourceId &&
+                      sourceIdToKey.has(sourceId)
+                  ) {
+                      existingKey =
+                          sourceIdToKey.get(sourceId);
+                  } else {
+                      const candidateKey =
+                          archiveItemKey({ permalink });
+          
+                      if (
+                          candidateKey &&
+                          map.has(candidateKey)
                       ) {
-                          if (collectorStopRequested || !unresolvedKeys.size) break;
-          
-                          const article = retryContainers[retryIndex];
-                          const permalink = getPermalink(article);
-                          const sourceId = extractPostId(permalink || '');
-          
-                          let existingKey = null;
-          
-                          if (
-                              sourceId &&
-                              sourceIdToKey.has(sourceId)
-                          ) {
-                              existingKey =
-                                  sourceIdToKey.get(sourceId);
-                          } else {
-                              const candidateKey =
-                                  archiveItemKey({ permalink });
-          
-                              if (
-                                  candidateKey &&
-                                  map.has(candidateKey)
-                              ) {
-                                  existingKey = candidateKey;
-                              }
-                          }
-          
-                          if (
-                              !existingKey ||
-                              !unresolvedKeys.has(existingKey)
-                          ) {
-                              continue;
-                          }
-          
-                          const existing = map.get(existingKey);
-          
-                          if (!existing || existing.dateIso) {
-                              unresolvedKeys.delete(existingKey);
-                              continue;
-                          }
-          
-                          status(
-                              `Pass 2: ${retryIndex + 1}/${retryContainers.length} ` +
-                              `(${unresolvedKeys.size} unresolved)`
-                          );
-          
-                          const retryTimestamp =
-                              await waitForTimestampCandidates(
-                                  article,
-                                  800
-                              );
-          
-                          let retryDateInfo = {
-                              date: null,
-                              source: 'main post timestamp unresolved',
-                              hoverDebug: []
-                          };
-          
-                          for (const candidate of retryTimestamp.values || []) {
-                              const parsed = parseFbDate(candidate.value);
-          
-                              if (parsed && !isNaN(parsed)) {
-                                  retryDateInfo = {
-                                      date: parsed,
-                                      source:
-                                          `${candidate.source}: ${candidate.value}`,
-                                      hoverDebug: []
-                                  };
-                                  break;
-                              }
-                          }
-          
-                          if (
-                              !retryDateInfo.date &&
-                              retryTimestamp.timestampEl &&
-                              retryTimestamp.timestampEl.isConnected
-                          ) {
-                              const hovered =
-                                  await getDateFromHover(
-                                      retryTimestamp.timestampEl,
-                                      600
-                                  );
-          
-                              if (hovered.date) {
-                                  retryDateInfo = hovered;
-                              }
-                          }
-          
-                          if (!retryDateInfo.date) {
-                              continue;
-                          }
-          
-                          const retrySnapshot = {
-                              ...existing,
-                              dateIso:
-                                  retryDateInfo.date.toISOString(),
-                              dateSource:
-                                  retryDateInfo.source || '',
-                              dateDebug: {
-                                  ...(existing.dateDebug || {}),
-                                  retryPass: {
-                                      candidates:
-                                          (retryTimestamp.values || [])
-                                              .map(x => ({
-                                                  source: x.source,
-                                                  value: x.value
-                                              })),
-                                      hasTimestampElement:
-                                          Boolean(
-                                              retryTimestamp.timestampEl
-                                          ),
-                                      hoverDebug:
-                                          retryDateInfo.hoverDebug || []
-                                  }
-                              }
-                          };
-          
-                          const merged =
-                              mergeArchiveItems(
-                                  existing,
-                                  retrySnapshot
-                              );
-          
-                          const newKey =
-                              archiveItemKey(merged);
-          
-                          if (newKey !== existingKey) {
-                              map.delete(existingKey);
-                          }
-          
-                          map.set(newKey, merged);
-          
-                          fingerprintToKey.set(
-                              merged.fingerprint,
-                              newKey
-                          );
-          
-                          const mergedSourceId =
-                              extractPostId(
-                                  merged.permalink || ''
-                              ) ||
-                              (
-                                  merged.id &&
-                                  !String(merged.id)
-                                      .startsWith('fp-')
-                                      ? String(merged.id)
-                                      : ''
-                              );
-          
-                          if (mergedSourceId) {
-                              sourceIdToKey.set(
-                                  mergedSourceId,
-                                  newKey
-                              );
-                          }
-          
-                          unresolvedKeys.delete(existingKey);
-                          secondPassRecovered++;
-                          updatedCount++;
-          
-                          saveArchiveRaw(
-                              [...map.values()]
-                          );
-          
-                          article.style.outline =
-                              '2px solid #35a853';
-                          article.dataset.fbwp =
-                              'collected-pass2';
-                      }
-          
-                      if (secondPassRecovered) {
-                          log(
-                              `Pass 2 recovered ${secondPassRecovered} unresolved post(s).`
-                          );
+                          existingKey = candidateKey;
                       }
                   }
           
-          ''' + marker
+                  if (
+                      !existingKey ||
+                      !unresolvedKeys.has(existingKey)
+                  ) {
+                      continue;
+                  }
+          
+                  const existing = map.get(existingKey);
+          
+                  if (!existing || existing.dateIso) {
+                      unresolvedKeys.delete(existingKey);
+                      continue;
+                  }
+          
+                  const retryTimestamp =
+                      await waitForTimestampCandidates(
+                          article,
+                          800
+                      );
+          
+                  let retryDateInfo = {
+                      date: null,
+                      source: 'main post timestamp unresolved',
+                      hoverDebug: []
+                  };
+          
+                  for (const candidate of retryTimestamp.values || []) {
+                      const parsed = parseFbDate(candidate.value);
+          
+                      if (parsed && !isNaN(parsed)) {
+                          retryDateInfo = {
+                              date: parsed,
+                              source:
+                                  `${candidate.source}: ${candidate.value}`,
+                              hoverDebug: []
+                          };
+                          break;
+                      }
+                  }
+          
+                  if (
+                      !retryDateInfo.date &&
+                      retryTimestamp.timestampEl &&
+                      retryTimestamp.timestampEl.isConnected
+                  ) {
+                      const hovered =
+                          await getDateFromHover(
+                              retryTimestamp.timestampEl,
+                              600
+                          );
+          
+                      if (hovered.date) {
+                          retryDateInfo = hovered;
+                      }
+                  }
+          
+                  if (!retryDateInfo.date) {
+                      continue;
+                  }
+          
+                  const retrySnapshot = {
+                      ...existing,
+                      dateIso:
+                          retryDateInfo.date.toISOString(),
+                      dateSource:
+                          retryDateInfo.source || '',
+                      dateDebug: {
+                          ...(existing.dateDebug || {}),
+                          retryPass: {
+                              candidates:
+                                  (retryTimestamp.values || [])
+                                      .map(x => ({
+                                          source: x.source,
+                                          value: x.value
+                                      })),
+                              hasTimestampElement:
+                                  Boolean(
+                                      retryTimestamp.timestampEl
+                                  ),
+                              hoverDebug:
+                                  retryDateInfo.hoverDebug || []
+                          }
+                      }
+                  };
+          
+                  const merged =
+                      mergeArchiveItems(
+                          existing,
+                          retrySnapshot
+                      );
+          
+                  const newKey =
+                      archiveItemKey(merged);
+          
+                  if (newKey !== existingKey) {
+                      map.delete(existingKey);
+                  }
+          
+                  map.set(newKey, merged);
+          
+                  fingerprintToKey.set(
+                      merged.fingerprint,
+                      newKey
+                  );
+          
+                  const mergedSourceId =
+                      extractPostId(
+                          merged.permalink || ''
+                      ) ||
+                      (
+                          merged.id &&
+                          !String(merged.id)
+                              .startsWith('fp-')
+                              ? String(merged.id)
+                              : ''
+                      );
+          
+                  if (mergedSourceId) {
+                      sourceIdToKey.set(
+                          mergedSourceId,
+                          newKey
+                      );
+                  }
+          
+                  unresolvedKeys.delete(existingKey);
+                  secondPassRecovered++;
+                  updatedCount++;
+          
+                  saveArchiveRaw(
+                      [...map.values()]
+                  );
+          
+                  article.style.outline =
+                      '2px solid #35a853';
+                  article.dataset.fbwp =
+                      'collected-pass2';
+              }
+          
+              log(
+                  `Pass 2 recovered ${secondPassRecovered} unresolved post(s).`
+              );
+          }
+          
+          """ + marker
           
           block = block.replace(marker, second_pass, 1)
           
-          old_return = '''            unresolvedCount: actualUnresolved,
-                      repairedExactText,
-                      olderCount,'''
-          new_return = '''            unresolvedCount: actualUnresolved,
-                      secondPassRecovered,
-                      repairedExactText,
-                      olderCount,'''
+          old_return = """            unresolvedCount: actualUnresolved,
+              repairedExactText,
+              olderCount,"""
+          new_return = """            unresolvedCount: actualUnresolved,
+              secondPassRecovered,
+              repairedExactText,
+              olderCount,"""
           if old_return not in block:
               raise SystemExit('Return block not found')
           block = block.replace(old_return, new_return, 1)
           
           src = src[:collect_start] + block + src[collect_end:]
           
-          if 'const VERSION = String(GM_info.script.version);' not in src:
-              raise SystemExit('Single version source missing')
-          if 'Pass 2 recovered' not in src:
-              raise SystemExit('Second pass missing')
-          if 'waitForTimestampCandidates(article, timeoutMs = 400)' not in src:
-              raise SystemExit('Short pass-1 timestamp wait missing')
-          if 'getDateFromHover(timestampEl, timeoutMs = 600)' not in src:
-              raise SystemExit('Bounded hover fallback missing')
+          for token in [
+              '// @version      1.4.15',
+              'const VERSION = String(GM_info.script.version);',
+              'waitForTimestampCandidates(article, timeoutMs = 400)',
+              'getDateFromHover(timestampEl, timeoutMs = 600)',
+              'Pass 2 recovered',
+              'secondPassRecovered'
+          ]:
+              if token not in src:
+                  raise SystemExit('Missing expected token: ' + token)
           
           runtime_without_metadata = re.sub(
               r'^// @version\s+.*$',
