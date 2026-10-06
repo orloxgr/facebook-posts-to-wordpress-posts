@@ -1,8 +1,10 @@
 // ==UserScript==
 // @name         Facebook Page to WordPress Collector Loader
 // @namespace    iniotakis-tools
-// @version      1.4.7-loader.3
+// @version      1.4.7-loader.4
 // @description  Loads the generic v1.4.7 Facebook Page collector bundle stored in this repository.
+// @updateURL    https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/facebook-posts-to-wordpress.user.js
+// @downloadURL  https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/facebook-posts-to-wordpress.user.js
 // @match        https://www.facebook.com/*
 // @match        https://facebook.com/*
 // @grant        GM_xmlhttpRequest
