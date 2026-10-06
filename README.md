@@ -8,15 +8,17 @@ The project is generic: it is not tied to one Facebook Page or one WordPress sit
 
 ### `tampermonkey/`
 
-Contains the browser collector. Its version is defined only by the userscript `@version` metadata.
+Contains the browser collector. Its version is defined only by the userscript `@version` metadata in the canonical file:
+
+`tampermonkey/facebook-posts-to-wordpress.user.js`
 
 Install it directly from GitHub with Tampermonkey using:
 
 `https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/facebook-posts-to-wordpress.user.js`
 
-The canonical userscript includes `@updateURL` and `@downloadURL` pointing to that same raw GitHub file, so Tampermonkey can update it automatically when a newer version is published.
+The canonical userscript includes `@updateURL` and `@downloadURL` pointing to that same raw GitHub file, so Tampermonkey can update it automatically when `@version` changes.
 
-The collector is loaded with Tampermonkey's `@require`, not with `eval()` or `new Function()`. This avoids Facebook's Content Security Policy `unsafe-eval` restriction.
+There is no separate loader, versioned collector copy, payload, `@require`, `eval()` or `new Function()` layer. Runtime version-dependent UI/state reads `GM_info.script.version`, so the metadata field is the single source of truth.
 
 For the current workflow:
 
