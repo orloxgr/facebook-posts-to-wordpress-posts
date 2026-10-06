@@ -10,6 +10,12 @@ The project is generic: it is not tied to one Facebook Page or one WordPress sit
 
 Contains the browser collector. Current collector: **v1.4.7**.
 
+Install it directly from GitHub with Tampermonkey using:
+
+`https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/facebook-posts-to-wordpress.user.js`
+
+The userscript includes `@updateURL` and `@downloadURL` pointing to that same raw GitHub file, so Tampermonkey can update the loader automatically when a newer version is published.
+
 For the current workflow:
 
 1. Open any Facebook Page you want to migrate.
