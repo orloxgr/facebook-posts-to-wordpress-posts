@@ -1,0 +1,216 @@
+name: Add v1.4.12 timestamp diagnostics
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message == 'Add v1.4.12 timestamp diagnostics'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Patch collector
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          from pathlib import Path
+
+          path = Path('tampermonkey/facebook-posts-to-wordpress.user.js')
+          src = path.read_text(encoding='utf-8')
+
+          old_version = '// @version      1.4.11'
+          new_version = '// @version      1.4.12'
+          if old_version not in src:
+              raise SystemExit('Expected collector version 1.4.11 not found')
+          src = src.replace(old_version, new_version, 1)
+
+          collect_marker = '    async function collectVisiblePosts(cutoffDate) {'
+          collect_pos = src.find(collect_marker)
+          if collect_pos < 0:
+              raise SystemExit('collectVisiblePosts not found')
+
+          helper = r'''    function collectTimestampDomDiagnostics(article) {
+        if (!article) return null;
+
+        const profile = article.querySelector(
+            '[data-ad-rendering-role="profile_name"]'
+        );
+        const story = article.querySelector(
+            '[data-ad-rendering-role="story_message"]'
+        );
+
+        let headerScope = profile || article;
+
+        if (profile) {
+            let current = profile;
+
+            while (
+                current.parentElement &&
+                current.parentElement !== article
+            ) {
+                const parent = current.parentElement;
+
+                if (story && parent.contains(story)) {
+                    break;
+                }
+
+                headerScope = parent;
+                current = parent;
+            }
+        }
+
+        function describe(el) {
+            if (!el || el.nodeType !== 1) return null;
+
+            const href = el.getAttribute('href');
+            const text = String(el.innerText || el.textContent || '')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .slice(0, 240);
+
+            return {
+                tag: el.tagName,
+                text,
+                href: href || null,
+                role: el.getAttribute('role'),
+                ariaLabel: el.getAttribute('aria-label'),
+                ariaLabelledby: el.getAttribute('aria-labelledby'),
+                title: el.getAttribute('title'),
+                target: el.getAttribute('target'),
+                dataUtime: el.getAttribute('data-utime'),
+                datetime: el.getAttribute('datetime'),
+                dataAdRenderingRole: el.getAttribute('data-ad-rendering-role'),
+                className: String(el.getAttribute('class') || '').slice(0, 320)
+            };
+        }
+
+        const selector = [
+            'a',
+            'time',
+            'abbr',
+            '[role="link"]',
+            '[role="button"]',
+            '[aria-label]',
+            '[aria-labelledby]',
+            '[title]',
+            '[data-utime]',
+            '[datetime]'
+        ].join(',');
+
+        const elements = [];
+        const seen = new Set();
+
+        for (const el of headerScope.querySelectorAll(selector)) {
+            if (elements.length >= 120) break;
+            if (seen.has(el)) continue;
+            seen.add(el);
+
+            const item = describe(el);
+            if (item) elements.push(item);
+        }
+
+        const profileAncestors = [];
+        let current = profile;
+        let depth = 0;
+
+        while (current && depth < 8) {
+            const item = describe(current);
+            if (item) profileAncestors.push(item);
+            if (current === article) break;
+            current = current.parentElement;
+            depth++;
+        }
+
+        return {
+            headerScope: describe(headerScope),
+            profile: describe(profile),
+            profileAncestors,
+            elements
+        };
+    }
+
+'''
+
+          if 'function collectTimestampDomDiagnostics(' in src:
+              raise SystemExit('Timestamp DOM diagnostics helper already exists')
+
+          src = src[:collect_pos] + helper + src[collect_pos:]
+          collect_pos += len(helper)
+
+          old_debug = '''                dateDebug: {
+                    candidates: (timestampDebug.values || []).map(x => ({
+                        source: x.source,
+                        value: x.value
+                    })),
+                    hasTimestampElement: Boolean(
+                        timestampDebug.timestampEl
+                    )
+                },'''
+
+          new_debug = '''                dateDebug: {
+                    candidates: [
+                        ...(timestampBeforeExpand.values || []),
+                        ...(timestampDebug.values || [])
+                    ].map(x => ({
+                        source: x.source,
+                        value: x.value
+                    })),
+                    hasTimestampElement: Boolean(
+                        timestampBeforeExpand.timestampEl ||
+                        timestampDebug.timestampEl
+                    ),
+                    beforeExpand: {
+                        candidates: (timestampBeforeExpand.values || []).map(x => ({
+                            source: x.source,
+                            value: x.value
+                        })),
+                        hasTimestampElement: Boolean(
+                            timestampBeforeExpand.timestampEl
+                        )
+                    },
+                    afterExpand: {
+                        candidates: (timestampDebug.values || []).map(x => ({
+                            source: x.source,
+                            value: x.value
+                        })),
+                        hasTimestampElement: Boolean(
+                            timestampDebug.timestampEl
+                        )
+                    },
+                    dom: dateValue
+                        ? null
+                        : collectTimestampDomDiagnostics(article)
+                },'''
+
+          debug_pos = src.find(old_debug, collect_pos)
+          if debug_pos < 0:
+              raise SystemExit('collectVisiblePosts dateDebug block not found')
+          src = src[:debug_pos] + new_debug + src[debug_pos + len(old_debug):]
+
+          if 'const VERSION = String(GM_info.script.version);' not in src:
+              raise SystemExit('Single version source missing')
+          if 'collectTimestampDomDiagnostics(article)' not in src:
+              raise SystemExit('Diagnostic capture missing')
+
+          path.write_text(src, encoding='utf-8')
+          PY
+
+          node --check tampermonkey/facebook-posts-to-wordpress.user.js
+
+      - name: Commit collector
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tampermonkey/facebook-posts-to-wordpress.user.js
+          git commit -m 'Add unresolved timestamp DOM diagnostics'
+          git push origin HEAD:main
