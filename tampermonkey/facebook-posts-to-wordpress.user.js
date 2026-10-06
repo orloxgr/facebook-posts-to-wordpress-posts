@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Facebook Page to WordPress Collector
 // @namespace    iniotakis-tools
-// @version      1.4.14
+// @version      1.4.15
 // @description  Collect Facebook Page posts to JSON for WordPress import, preserving source dates, text and photos.
 // @updateURL    https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/facebook-posts-to-wordpress.user.js
 // @downloadURL  https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/facebook-posts-to-wordpress.user.js
@@ -2061,7 +2061,7 @@
         return [...values];
     }
 
-    async function getDateFromHover(timestampEl) {
+    async function getDateFromHover(timestampEl, timeoutMs = 600) {
         if (!timestampEl) {
             return { date: null, source: '', hoverDebug: [] };
         }
@@ -2148,7 +2148,7 @@
         dispatchHover(timestampEl);
 
         const hoverStarted = Date.now();
-        while (Date.now() - hoverStarted < 1200) {
+        while (Date.now() - hoverStarted < timeoutMs) {
             collectNewTooltipTexts();
 
             if ([...observed].some(value => {
@@ -2158,7 +2158,7 @@
                 break;
             }
 
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise(resolve => setTimeout(resolve, 80));
             dispatchHover(timestampEl);
         }
 
@@ -2170,9 +2170,9 @@
             }
 
             const focusStarted = Date.now();
-            while (Date.now() - focusStarted < 700) {
+            while (Date.now() - focusStarted < 250) {
                 collectNewTooltipTexts();
-                await new Promise(resolve => setTimeout(resolve, 100));
+                await new Promise(resolve => setTimeout(resolve, 80));
             }
 
             try { timestampEl.blur(); } catch (_) {}
@@ -2643,7 +2643,7 @@
     }
 
 
-    async function waitForTimestampCandidates(article, timeoutMs = 1600) {
+    async function waitForTimestampCandidates(article, timeoutMs = 400) {
         const started = Date.now();
         let last = { values: [], timestampEl: null };
 
@@ -2654,8 +2654,8 @@
             });
         } catch (_) {}
 
-        // Give Facebook a moment to hydrate the header for this post.
-        await new Promise(resolve => setTimeout(resolve, 220));
+        // Keep pass 1 quick. Misses are retried by pass 2.
+        await new Promise(resolve => setTimeout(resolve, 80));
 
         while (Date.now() - started < timeoutMs) {
             last = collectMainTimestampCandidates(article);
@@ -2664,12 +2664,11 @@
                 return last;
             }
 
-            await new Promise(resolve => setTimeout(resolve, 160));
+            await new Promise(resolve => setTimeout(resolve, 80));
         }
 
         return last;
     }
-
 
     function collectTimestampDomDiagnostics(article) {
         if (!article) return null;
@@ -2891,7 +2890,7 @@
             /* Capture the structural timestamp before See more can replace the React subtree. */
   const timestampBeforeExpand = await waitForTimestampCandidates(
       article,
-      1600
+      400
   );
 
   let dateBeforeExpand = {
@@ -2911,20 +2910,6 @@
       }
   }
 
-  if (
-      !dateBeforeExpand.date &&
-      timestampBeforeExpand.timestampEl &&
-      timestampBeforeExpand.timestampEl.isConnected
-  ) {
-      const hovered = await getDateFromHover(
-          timestampBeforeExpand.timestampEl
-      );
-
-      if (hovered.date) {
-          dateBeforeExpand = hovered;
-      }
-  }
-
   const expandInfo = await expandArticleBeforeCollect(article);
 
             if (expandInfo.found) {
@@ -2941,7 +2926,7 @@
 
             const timestampDebug = await waitForTimestampCandidates(
                 article,
-                1600
+                400
             );
 
             let dateInfo = {
@@ -2961,15 +2946,6 @@
                 }
             }
 
-            if (!dateInfo.date && timestampDebug.timestampEl) {
-                const hovered = await getDateFromHover(
-                    timestampDebug.timestampEl
-                );
-
-                if (hovered.date) {
-                    dateInfo = hovered;
-                }
-            }
             if (!dateInfo.date && dateBeforeExpand.date) {
       dateInfo = dateBeforeExpand;
   }
@@ -3193,6 +3169,163 @@
             article.dataset.fbwp = dateValue ? 'collected' : 'collected-no-date';
         }
 
+        /*
+         * PASS 2:
+         * Retry only entries that are still unresolved and still mounted.
+         * Already-dated items are never touched and no duplicate is created.
+         */
+        let secondPassRecovered = 0;
+
+        const unresolvedKeys = new Set(
+            [...map.entries()]
+                .filter(([, item]) => !item.dateIso)
+                .map(([key]) => key)
+        );
+
+        if (unresolvedKeys.size) {
+            status(
+                `Pass 2: retrying ${unresolvedKeys.size} unresolved post(s)...`
+            );
+
+            const retryContainers =
+                getPostContainers().filter(isTargetPost);
+
+            for (
+                let retryIndex = 0;
+                retryIndex < retryContainers.length;
+                retryIndex++
+            ) {
+                if (collectorStopRequested || !unresolvedKeys.size) break;
+
+                const article = retryContainers[retryIndex];
+                const permalink = getPermalink(article);
+                const sourceId = extractPostId(permalink || '');
+
+                let existingKey = null;
+
+                if (
+                    sourceId &&
+                    sourceIdToKey.has(sourceId)
+                ) {
+                    existingKey = sourceIdToKey.get(sourceId);
+                } else {
+                    const candidateKey = archiveItemKey({ permalink });
+                    if (candidateKey && map.has(candidateKey)) {
+                        existingKey = candidateKey;
+                    }
+                }
+
+                if (
+                    !existingKey ||
+                    !unresolvedKeys.has(existingKey)
+                ) {
+                    continue;
+                }
+
+                const existing = map.get(existingKey);
+                if (!existing || existing.dateIso) {
+                    unresolvedKeys.delete(existingKey);
+                    continue;
+                }
+
+                const retryTimestamp =
+                    await waitForTimestampCandidates(article, 800);
+
+                let retryDateInfo = {
+                    date: null,
+                    source: 'main post timestamp unresolved',
+                    hoverDebug: []
+                };
+
+                for (const candidate of retryTimestamp.values || []) {
+                    const parsed = parseFbDate(candidate.value);
+                    if (parsed && !isNaN(parsed)) {
+                        retryDateInfo = {
+                            date: parsed,
+                            source: `${candidate.source}: ${candidate.value}`,
+                            hoverDebug: []
+                        };
+                        break;
+                    }
+                }
+
+                if (
+                    !retryDateInfo.date &&
+                    retryTimestamp.timestampEl &&
+                    retryTimestamp.timestampEl.isConnected
+                ) {
+                    const hovered = await getDateFromHover(
+                        retryTimestamp.timestampEl,
+                        600
+                    );
+                    if (hovered.date) {
+                        retryDateInfo = hovered;
+                    }
+                }
+
+                if (!retryDateInfo.date) {
+                    continue;
+                }
+
+                const retrySnapshot = {
+                    ...existing,
+                    dateIso: retryDateInfo.date.toISOString(),
+                    dateSource: retryDateInfo.source || '',
+                    dateDebug: {
+                        ...(existing.dateDebug || {}),
+                        retryPass: {
+                            candidates: (retryTimestamp.values || []).map(x => ({
+                                source: x.source,
+                                value: x.value
+                            })),
+                            hasTimestampElement: Boolean(
+                                retryTimestamp.timestampEl
+                            ),
+                            hoverDebug: retryDateInfo.hoverDebug || []
+                        }
+                    }
+                };
+
+                const merged = mergeArchiveItems(
+                    existing,
+                    retrySnapshot
+                );
+                const newKey = archiveItemKey(merged);
+
+                if (newKey !== existingKey) {
+                    map.delete(existingKey);
+                }
+                map.set(newKey, merged);
+                fingerprintToKey.set(merged.fingerprint, newKey);
+
+                const mergedSourceId =
+                    extractPostId(merged.permalink || '') ||
+                    (
+                        merged.id &&
+                        !String(merged.id).startsWith('fp-')
+                            ? String(merged.id)
+                            : ''
+                    );
+
+                if (mergedSourceId) {
+                    sourceIdToKey.set(mergedSourceId, newKey);
+                }
+
+                unresolvedKeys.delete(existingKey);
+                secondPassRecovered++;
+                updatedCount++;
+
+                saveArchiveRaw([...map.values()]);
+
+                article.style.outline = '2px solid #35a853';
+                article.dataset.fbwp = 'collected-pass2';
+            }
+
+            log(
+                `Pass 2 recovered ${secondPassRecovered} unresolved post(s).`
+            );
+        }
+
         const repairedExactText =
             repairUnresolvedExactTextDuplicates(
                 map
@@ -3221,6 +3354,7 @@
             newCount,
             updatedCount,
             unresolvedCount: actualUnresolved,
+            secondPassRecovered,
             repairedExactText,
             olderCount,
             oldestDate,
