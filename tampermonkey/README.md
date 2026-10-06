@@ -10,7 +10,7 @@ Install `facebook-posts-to-wordpress.user.js` in Tampermonkey, then open the Fac
 
 `https://www.facebook.com/example.page`
 
-The loader verifies the known collector payload before applying the generic v1.4.7 adaptation. It aborts if an expected patch cannot be applied, rather than running a partially patched collector.
+The loader fetches the versioned generic v1.4.7 payload and verifies its SHA-256 before running it. The readable v1.4.7 collector source is also included in this directory.
 
 ## Workflow
 
