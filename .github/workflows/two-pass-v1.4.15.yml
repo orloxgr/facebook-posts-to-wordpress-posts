@@ -18,7 +18,520 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 -c "import base64; exec(base64.b64decode('CmZyb20gcGF0aGxpYiBpbXBvcnQgUGF0aAppbXBvcnQgcmUKCnBhdGggPSBQYXRoKCd0YW1wZXJtb25rZXkvZmFjZWJvb2stcG9zdHMtdG8td29yZHByZXNzLnVzZXIuanMnKQpzcmMgPSBwYXRoLnJlYWRfdGV4dChlbmNvZGluZz0ndXRmLTgnKQoKb2xkX3ZlcnNpb24gPSAnLy8gQHZlcnNpb24gICAgICAxLjQuMTQnCm5ld192ZXJzaW9uID0gJy8vIEB2ZXJzaW9uICAgICAgMS40LjE1JwppZiBvbGRfdmVyc2lvbiBub3QgaW4gc3JjOgogICAgcmFpc2UgU3lzdGVtRXhpdCgnRXhwZWN0ZWQgY29sbGVjdG9yIHZlcnNpb24gMS40LjE0IG5vdCBmb3VuZCcpCnNyYyA9IHNyYy5yZXBsYWNlKG9sZF92ZXJzaW9uLCBuZXdfdmVyc2lvbiwgMSkKCm9sZF93YWl0ID0gJycnICAgIGFzeW5jIGZ1bmN0aW9uIHdhaXRGb3JUaW1lc3RhbXBDYW5kaWRhdGVzKGFydGljbGUsIHRpbWVvdXRNcyA9IDE2MDApIHsKICAgICAgICBjb25zdCBzdGFydGVkID0gRGF0ZS5ub3coKTsKICAgICAgICBsZXQgbGFzdCA9IHsgdmFsdWVzOiBbXSwgdGltZXN0YW1wRWw6IG51bGwgfTsKCiAgICAgICAgdHJ5IHsKICAgICAgICAgICAgYXJ0aWNsZS5zY3JvbGxJbnRvVmlldyh7CiAgICAgICAgICAgICAgICBibG9jazogJ2NlbnRlcicsCiAgICAgICAgICAgICAgICBpbmxpbmU6ICduZWFyZXN0JwogICAgICAgICAgICB9KTsKICAgICAgICB9IGNhdGNoIChfKSB7fQoKICAgICAgICAvLyBHaXZlIEZhY2Vib29rIGEgbW9tZW50IHRvIGh5ZHJhdGUgdGhlIGhlYWRlciBmb3IgdGhpcyBwb3N0LgogICAgICAgIGF3YWl0IG5ldyBQcm9taXNlKHJlc29sdmUgPT4gc2V0VGltZW91dChyZXNvbHZlLCAyMjApKTsKCiAgICAgICAgd2hpbGUgKERhdGUubm93KCkgLSBzdGFydGVkIDwgdGltZW91dE1zKSB7CiAgICAgICAgICAgIGxhc3QgPSBjb2xsZWN0TWFpblRpbWVzdGFtcENhbmRpZGF0ZXMoYXJ0aWNsZSk7CgogICAgICAgICAgICBpZiAobGFzdC52YWx1ZXMubGVuZ3RoKSB7CiAgICAgICAgICAgICAgICByZXR1cm4gbGFzdDsKICAgICAgICAgICAgfQoKICAgICAgICAgICAgYXdhaXQgbmV3IFByb21pc2UocmVzb2x2ZSA9PiBzZXRUaW1lb3V0KHJlc29sdmUsIDE2MCkpOwogICAgICAgIH0KCiAgICAgICAgcmV0dXJuIGxhc3Q7CiAgICB9JycnCm5ld193YWl0ID0gJycnICAgIGFzeW5jIGZ1bmN0aW9uIHdhaXRGb3JUaW1lc3RhbXBDYW5kaWRhdGVzKGFydGljbGUsIHRpbWVvdXRNcyA9IDQwMCkgewogICAgICAgIGNvbnN0IHN0YXJ0ZWQgPSBEYXRlLm5vdygpOwogICAgICAgIGxldCBsYXN0ID0geyB2YWx1ZXM6IFtdLCB0aW1lc3RhbXBFbDogbnVsbCB9OwoKICAgICAgICB0cnkgewogICAgICAgICAgICBhcnRpY2xlLnNjcm9sbEludG9WaWV3KHsKICAgICAgICAgICAgICAgIGJsb2NrOiAnY2VudGVyJywKICAgICAgICAgICAgICAgIGlubGluZTogJ25lYXJlc3QnCiAgICAgICAgICAgIH0pOwogICAgICAgIH0gY2F0Y2ggKF8pIHt9CgogICAgICAgIC8vIFNob3J0IGh5ZHJhdGlvbiB3aW5kb3cuIEEgc2Vjb25kIHBhc3MgaGFuZGxlcyBtaXNzZXMuCiAgICAgICAgYXdhaXQgbmV3IFByb21pc2UocmVzb2x2ZSA9PiBzZXRUaW1lb3V0KHJlc29sdmUsIDgwKSk7CgogICAgICAgIHdoaWxlIChEYXRlLm5vdygpIC0gc3RhcnRlZCA8IHRpbWVvdXRNcykgewogICAgICAgICAgICBsYXN0ID0gY29sbGVjdE1haW5UaW1lc3RhbXBDYW5kaWRhdGVzKGFydGljbGUpOwoKICAgICAgICAgICAgaWYgKGxhc3QudmFsdWVzLmxlbmd0aCkgewogICAgICAgICAgICAgICAgcmV0dXJuIGxhc3Q7CiAgICAgICAgICAgIH0KCiAgICAgICAgICAgIGF3YWl0IG5ldyBQcm9taXNlKHJlc29sdmUgPT4gc2V0VGltZW91dChyZXNvbHZlLCA4MCkpOwogICAgICAgIH0KCiAgICAgICAgcmV0dXJuIGxhc3Q7CiAgICB9JycnCmlmIG9sZF93YWl0IG5vdCBpbiBzcmM6CiAgICByYWlzZSBTeXN0ZW1FeGl0KCd3YWl0Rm9yVGltZXN0YW1wQ2FuZGlkYXRlcyBibG9jayBub3QgZm91bmQnKQpzcmMgPSBzcmMucmVwbGFjZShvbGRfd2FpdCwgbmV3X3dhaXQsIDEpCgpodmVyX3N0YXJ0ID0gc3JjLmZpbmQoJyAgICBhc3luYyBmdW5jdGlvbiBnZXREYXRlRnJvbUhvdmVyKHRpbWVzdGFtcEVsKSB7JykKaG92ZXJfZW5kID0gc3JjLmZpbmQoJ1xuICAgIGFzeW5jIGZ1bmN0aW9uIGV4dHJhY3REYXRlKGFydGljbGUpIHsnLCBob3Zlcl9zdGFydCkKaWYgaG92ZXJfc3RhcnQgPCAwIG9yIGhvdmVyX2VuZCA8IDA6CiAgICByYWlzZSBTeXN0ZW1FeGl0KCdnZXREYXRlRnJvbUhvdmVyIGJsb2NrIG5vdCBmb3VuZCcpCgpuZXdfaG92ZXIgPSByJycnICAgIGFzeW5jIGZ1bmN0aW9uIGdldERhdGVGcm9tSG92ZXIodGltZXN0YW1wRWwsIHRpbWVvdXRNcyA9IDYwMCkgewogICAgICAgIGlmICghdGltZXN0YW1wRWwpIHsKICAgICAgICAgICAgcmV0dXJuIHsgZGF0ZTogbnVsbCwgc291cmNlOiAnJywgaG92ZXJEZWJ1ZzogW10gfTsKICAgICAgICB9CgogICAgICAgIGNvbnN0IG9ic2VydmVkID0gbmV3IFNldCgpOwogICAgICAgIGNvbnN0IGJhc2VsaW5lID0gbmV3IFNldChjb2xsZWN0VG9vbHRpcFRleHRzKCkpOwogICAgICAgIGNvbnN0IGV4aXN0aW5nVG9vbHRpcHMgPSBuZXcgU2V0KAogICAgICAgICAgICBbLi4uZG9jdW1lbnQucXVlcnlTZWxlY3RvckFsbCgnW3JvbGU9InRvb2x0aXAiXScpXQogICAgICAgICk7CgogICAgICAgIGZ1bmN0aW9uIGFkZFZhbHVlKHZhbHVlKSB7CiAgICAgICAgICAgIGNvbnN0IHQgPSBTdHJpbmcodmFsdWUgfHwgJycpCiAgICAgICAgICAgICAgICAucmVwbGFjZSgvXHUyMDJmL2csICcgJykKICAgICAgICAgICAgICAgIC50cmltKCk7CgogICAgICAgICAgICBpZiAoCiAgICAgICAgICAgICAgICB0ICYmCiAgICAgICAgICAgICAgICB0Lmxlbmd0aCA8PSAyNDAgJiYKICAgICAgICAgICAgICAgIGxvb2tzTGlrZURhdGVUZXh0KHQpICYmCiAgICAgICAgICAgICAgICAhYmFzZWxpbmUuaGFzKHQpCiAgICAgICAgICAgICkgewogICAgICAgICAgICAgICAgb2JzZXJ2ZWQuYWRkKHQpOwogICAgICAgICAgICB9CiAgICAgICAgfQoKICAgICAgICBmdW5jdGlvbiBjb2xsZWN0RnJvbUVsZW1lbnQoZWwpIHsKICAgICAgICAgICAgaWYgKCEoZWwgaW5zdGFuY2VvZiBFbGVtZW50KSkgcmV0dXJuOwoKICAgICAgICAgICAgZm9yIChjb25zdCB2IG9mIFsKICAgICAgICAgICAgICAgIGVsLmdldEF0dHJpYnV0ZT8uKCdhcmlhLWxhYmVsJyksCiAgICAgICAgICAgICAgICBlbC5nZXRBdHRyaWJ1dGU/LigndGl0bGUnKSwKICAgICAgICAgICAgICAgIGVsLmlubmVyVGV4dCwKICAgICAgICAgICAgICAgIGVsLnRleHRDb250ZW50CiAgICAgICAgICAgIF0pIHsKICAgICAgICAgICAgICAgIGFkZFZhbHVlKHYpOwogICAgICAgICAgICB9CiAgICAgICAgfQoKICAgICAgICBjb25zdCBvYnNlcnZlciA9IG5ldyBNdXRhdGlvbk9ic2VydmVyKG11dGF0aW9ucyA9PiB7CiAgICAgICAgICAgIGZvciAoY29uc3QgbXV0YXRpb24gb2YgbXV0YXRpb25zKSB7CiAgICAgICAgICAgICAgICBmb3IgKGNvbnN0IG5vZGUgb2YgbXV0YXRpb24uYWRkZWROb2RlcykgewogICAgICAgICAgICAgICAgICAgIGlmICghKG5vZGUgaW5zdGFuY2VvZiBFbGVtZW50KSkgY29udGludWU7CgogICAgICAgICAgICAgICAgICAgIGNvbnN0IGNhbmRpZGF0ZXMgPSBbXTsKCiAgICAgICAgICAgICAgICAgICAgaWYgKAogICAgICAgICAgICAgICAgICAgICAgICBub2RlLm1hdGNoZXM/LigKICAgICAgICAgICAgICAgICAgICAgICAgICAgICdbcm9sZT0idG9vbHRpcCJdLCBbZGF0YS12aXN1YWxjb21wbGV0aW9uPSJpZ25vcmUtZHluYW1pYyJdLCBbYXJpYS1saXZlPSJwb2xpdGUiXScKICAgICAgICAgICAgICAgICAgICAgICAgKQogICAgICAgICAgICAgICAgICAgICkgewogICAgICAgICAgICAgICAgICAgICAgICBjYW5kaWRhdGVzLnB1c2gobm9kZSk7CiAgICAgICAgICAgICAgICAgICAgfQoKICAgICAgICAgICAgICAgICAgICBjYW5kaWRhdGVzLnB1c2goLi4uKAogICAgICAgICAgICAgICAgICAgICAgICBub2RlLnF1ZXJ5U2VsZWN0b3JBbGw/LigKICAgICAgICAgICAgICAgICAgICAgICAgICAgICdbcm9sZT0idG9vbHRpcCJdLCBbZGF0YS12aXN1YWxjb21wbGV0aW9uPSJpZ25vcmUtZHluYW1pYyJdLCBbYXJpYS1saXZlPSJwb2xpdGUiXScKICAgICAgICAgICAgICAgICAgICAgICAgKSB8fCBbXQogICAgICAgICAgICAgICAgICAgICkpOwoKICAgICAgICAgICAgICAgICAgICBmb3IgKGNvbnN0IGVsIG9mIGNhbmRpZGF0ZXMpIHsKICAgICAgICAgICAgICAgICAgICAgICAgaWYgKAogICAgICAgICAgICAgICAgICAgICAgICAgICAgZWwubWF0Y2hlcz8uKCdbcm9sZT0idG9vbHRpcCJdJykgJiYKICAgICAgICAgICAgICAgICAgICAgICAgICAgIGV4aXN0aW5nVG9vbHRpcHMuaGFzKGVsKQogICAgICAgICAgICAgICAgICAgICAgICApIHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgIGNvbnRpbnVlOwogICAgICAgICAgICAgICAgICAgICAgICB9CgogICAgICAgICAgICAgICAgICAgICAgICBjb2xsZWN0RnJvbUVsZW1lbnQoZWwpOwogICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgfQogICAgICAgIH0pOwoKICAgICAgICBvYnNlcnZlci5vYnNlcnZlKGRvY3VtZW50LmJvZHksIHsKICAgICAgICAgICAgY2hpbGRMaXN0OiB0cnVlLAogICAgICAgICAgICBzdWJ0cmVlOiB0cnVlCiAgICAgICAgfSk7CgogICAgICAgIGZ1bmN0aW9uIGNvbGxlY3ROZXdUb29sdGlwVGV4dHMoKSB7CiAgICAgICAgICAgIGZvciAoY29uc3QgdmFsdWUgb2YgY29sbGVjdFRvb2x0aXBUZXh0cygpKSB7CiAgICAgICAgICAgICAgICBhZGRWYWx1ZSh2YWx1ZSk7CiAgICAgICAgICAgIH0KICAgICAgICB9CgogICAgICAgIGRpc3BhdGNoSG92ZXIodGltZXN0YW1wRWwpOwoKICAgICAgICBjb25zdCBzdGFydGVkID0gRGF0ZS5ub3coKTsKCiAgICAgICAgd2hpbGUgKERhdGUubm93KCkgLSBzdGFydGVkIDwgdGltZW91dE1zKSB7CiAgICAgICAgICAgIGNvbGxlY3ROZXdUb29sdGlwVGV4dHMoKTsKCiAgICAgICAgICAgIGZvciAoY29uc3QgY2FuZGlkYXRlIG9mIG9ic2VydmVkKSB7CiAgICAgICAgICAgICAgICBjb25zdCBkID0gcGFyc2VGYkRhdGUoY2FuZGlkYXRlKTsKCiAgICAgICAgICAgICAgICBpZiAoZCAmJiAhaXNOYU4oZCkpIHsKICAgICAgICAgICAgICAgICAgICBvYnNlcnZlci5kaXNjb25uZWN0KCk7CiAgICAgICAgICAgICAgICAgICAgZGlzcGF0Y2hVbmhvdmVyKHRpbWVzdGFtcEVsKTsKCiAgICAgICAgICAgICAgICAgICAgcmV0dXJuIHsKICAgICAgICAgICAgICAgICAgICAgICAgZGF0ZTogZCwKICAgICAgICAgICAgICAgICAgICAgICAgc291cmNlOiAnbWFpbiB0aW1lc3RhbXAgdG9vbHRpcDogJyArIGNhbmRpZGF0ZSwKICAgICAgICAgICAgICAgICAgICAgICAgaG92ZXJEZWJ1ZzogWy4uLm9ic2VydmVkXS5zbGljZSgwLCA4KQogICAgICAgICAgICAgICAgICAgIH07CiAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgIH0KCiAgICAgICAgICAgIGF3YWl0IG5ldyBQcm9taXNlKHJlc29sdmUgPT4gc2V0VGltZW91dChyZXNvbHZlLCA4MCkpOwogICAgICAgICAgICBkaXNwYXRjaEhvdmVyKHRpbWVzdGFtcEVsKTsKICAgICAgICB9CgogICAgICAgIG9ic2VydmVyLmRpc2Nvbm5lY3QoKTsKICAgICAgICBkaXNwYXRjaFVuaG92ZXIodGltZXN0YW1wRWwpOwogICAgICAgIGNvbGxlY3ROZXdUb29sdGlwVGV4dHMoKTsKCiAgICAgICAgZm9yIChjb25zdCBjYW5kaWRhdGUgb2Ygb2JzZXJ2ZWQpIHsKICAgICAgICAgICAgY29uc3QgZCA9IHBhcnNlRmJEYXRlKGNhbmRpZGF0ZSk7CgogICAgICAgICAgICBpZiAoZCAmJiAhaXNOYU4oZCkpIHsKICAgICAgICAgICAgICAgIHJldHVybiB7CiAgICAgICAgICAgICAgICAgICAgZGF0ZTogZCwKICAgICAgICAgICAgICAgICAgICBzb3VyY2U6ICdtYWluIHRpbWVzdGFtcCB0b29sdGlwOiAnICsgY2FuZGlkYXRlLAogICAgICAgICAgICAgICAgICAgIGhvdmVyRGVidWc6IFsuLi5vYnNlcnZlZF0uc2xpY2UoMCwgOCkKICAgICAgICAgICAgICAgIH07CiAgICAgICAgICAgIH0KICAgICAgICB9CgogICAgICAgIHJldHVybiB7CiAgICAgICAgICAgIGRhdGU6IG51bGwsCiAgICAgICAgICAgIHNvdXJjZTogWy4uLm9ic2VydmVkXS5zbGljZSgwLCA1KS5qb2luKCcgfCAnKSwKICAgICAgICAgICAgaG92ZXJEZWJ1ZzogWy4uLm9ic2VydmVkXS5zbGljZSgwLCA4KQogICAgICAgIH07CiAgICB9CicnJwpzcmMgPSBzcmNbOmhvdmVyX3N0YXJ0XSArIG5ld19ob3ZlciArIHNyY1tob3Zlcl9lbmQ6XQoKY29sbGVjdF9zdGFydCA9IHNyYy5maW5kKCcgICAgYXN5bmMgZnVuY3Rpb24gY29sbGVjdFZpc2libGVQb3N0cyhjdXRvZmZEYXRlKSB7JykKY29sbGVjdF9lbmQgPSBzcmMuZmluZCgnXG4gICAgZnVuY3Rpb24gd2FpdEZvckZlZWRDaGFuZ2UoJywgY29sbGVjdF9zdGFydCkKaWYgY29sbGVjdF9zdGFydCA8IDAgb3IgY29sbGVjdF9lbmQgPCAwOgogICAgcmFpc2UgU3lzdGVtRXhpdCgnY29sbGVjdFZpc2libGVQb3N0cyBibG9jayBub3QgZm91bmQnKQoKYmxvY2sgPSBzcmNbY29sbGVjdF9zdGFydDpjb2xsZWN0X2VuZF0KCmlmIGJsb2NrLmNvdW50KCdhcnRpY2xlLFxuICAgICAgMTYwMCcpICE9IDE6CiAgICByYWlzZSBTeXN0ZW1FeGl0KCdFeHBlY3RlZCBvbmUgcHJlLWV4cGFuZCAxNjAwIHdhaXQnKQpibG9jayA9IGJsb2NrLnJlcGxhY2UoJ2FydGljbGUsXG4gICAgICAxNjAwJywgJ2FydGljbGUsXG4gICAgICA0MDAnLCAxKQoKaWYgYmxvY2suY291bnQoJ2FydGljbGUsXG4gICAgICAgICAgICAgICAgMTYwMCcpICE9IDE6CiAgICByYWlzZSBTeXN0ZW1FeGl0KCdFeHBlY3RlZCBvbmUgcG9zdC1leHBhbmQgMTYwMCB3YWl0JykKYmxvY2sgPSBibG9jay5yZXBsYWNlKCdhcnRpY2xlLFxuICAgICAgICAgICAgICAgIDE2MDAnLCAnYXJ0aWNsZSxcbiAgICAgICAgICAgICAgICA0MDAnLCAxKQoKcHJlX2hvdmVyID0gJycnICBpZiAoCiAgICAgICFkYXRlQmVmb3JlRXhwYW5kLmRhdGUgJiYKICAgICAgdGltZXN0YW1wQmVmb3JlRXhwYW5kLnRpbWVzdGFtcEVsICYmCiAgICAgIHRpbWVzdGFtcEJlZm9yZUV4cGFuZC50aW1lc3RhbXBFbC5pc0Nvbm5lY3RlZAogICkgewogICAgICBjb25zdCBob3ZlcmVkID0gYXdhaXQgZ2V0RGF0ZUZyb21Ib3ZlcigKICAgICAgICAgIHRpbWVzdGFtcEJlZm9yZUV4cGFuZC50aW1lc3RhbXBFbAogICAgICApOwoKICAgICAgaWYgKGhvdmVyZWQuZGF0ZSkgewogICAgICAgICAgZGF0ZUJlZm9yZUV4cGFuZCA9IGhvdmVyZWQ7CiAgICAgIH0KICB9CgondycnaWYgcHJlX2hvdmVyIG5vdCBpbiBibG9jazoKICAgIHJhaXNlIFN5c3RlbUV4aXQoJ1ByZS1leHBhbmQgaG92ZXIgYmxvY2sgbm90IGZvdW5kJykKYmxvY2sgPSBibG9jay5yZXBsYWNlKHByZV9ob3ZlciwgJycsIDEpCgpwb3N0X2hvdmVyID0gJycnICAgICAgICAgICAgaWYgKCFkYXRlSW5mby5kYXRlICYmIHRpbWVzdGFtcERlYnVnLnRpbWVzdGFtcEVsKSB7CiAgICAgICAgICAgICAgICBjb25zdCBob3ZlcmVkID0gYXdhaXQgZ2V0RGF0ZUZyb21Ib3ZlcigKICAgICAgICAgICAgICAgICAgICB0aW1lc3RhbXBEZWJ1Zy50aW1lc3RhbXBFbAogICAgICAgICAgICAgICAgKTsKCiAgICAgICAgICAgICAgICBpZiAoaG92ZXJlZC5kYXRlKSB7CiAgICAgICAgICAgICAgICAgICAgZGF0ZUluZm8gPSBob3ZlcmVkOwogICAgICAgICAgICAgICAgfQogICAgICAgICAgICB9CicnJwppZiBwb3N0X2hvdmVyIG5vdCBpbiBibG9jazoKICAgIHJhaXNlIFN5c3RlbUV4aXQoJ1Bvc3QtZXhwYW5kIGhvdmVyIGJsb2NrIG5vdCBmb3VuZCcpCmJsb2NrID0gYmxvY2sucmVwbGFjZShwb3N0X2hvdmVyLCAnJywgMSkKCm1hcmtlciA9ICcnJyAgICAgICAgY29uc3QgcmVwYWlyZWRFeGFjdFRleHQgPQogICAgICAgICAgICByZXBhaXJVbnJlc29sdmVkRXhhY3RUZXh0RHVwbGljYXRlcygKICAgICAgICAgICAgICAgIG1hcAogICAgICAgICAgICApOwonJycKaWYgbWFya2VyIG5vdCBpbiBibG9jazoKICAgIHJhaXNlIFN5c3RlbUV4aXQoJ1NlY29uZC1wYXNzIGluc2VydGlvbiBtYXJrZXIgbm90IGZvdW5kJykKCnNlY29uZF9wYXNzID0gcicnJyAgICAgICAgLyoKICAgICAgICAgKiBQQVNTIDI6CiAgICAgICAgICogUmV0cnkgT05MWSBhcmNoaXZlIGVudHJpZXMgdGhhdCBhcmUgc3RpbGwgdW5yZXNvbHZlZCBhbmQgYXJlIHN0aWxsCiAgICAgICAgICogbW91bnRlZCBpbiB0aGUgY3VycmVudCBGYWNlYm9vayBET00uIEV4aXN0aW5nIGRhdGVkIGVudHJpZXMgYXJlIG5ldmVyCiAgICAgICAgICogdG91Y2hlZCBhbmQgbm8gZHVwbGljYXRlIGFyY2hpdmUgaXRlbSBpcyBjcmVhdGVkLgogICAgICAgICAqLwogICAgICAgIGxldCBzZWNvbmRQYXNzUmVjb3ZlcmVkID0gMDsKCiAgICAgICAgY29uc3QgdW5yZXNvbHZlZEtleXMgPSBuZXcgU2V0KAogICAgICAgICAgICBbLi4ubWFwLmVudHJpZXMoKV0KICAgICAgICAgICAgICAgIC5maWx0ZXIoKFssIGl0ZW1dKSA9PiAhaXRlbS5kYXRlSXNvKQogICAgICAgICAgICAgICAgLm1hcCgoW2tleV0pID0+IGtleSkKICAgICAgICApOwoKICAgICAgICBpZiAodW5yZXNvbHZlZEtleXMuc2l6ZSkgewogICAgICAgICAgICBzdGF0dXMoCiAgICAgICAgICAgICAgICBgUGFzcyAyOiByZXRyeWluZyAke3VucmVzb2x2ZWRLZXlzLnNpemV9IHVucmVzb2x2ZWQgcG9zdChzKS4uLmAKICAgICAgICAgICAgKTsKCiAgICAgICAgICAgIGNvbnN0IHJldHJ5Q29udGFpbmVycyA9CiAgICAgICAgICAgICAgICBnZXRQb3N0Q29udGFpbmVycygpLmZpbHRlcihpc1RhcmdldFBvc3QpOwoKICAgICAgICAgICAgZm9yICgKICAgICAgICAgICAgICAgIGxldCByZXRyeUluZGV4ID0gMDsKICAgICAgICAgICAgICAgIHJldHJ5SW5kZXggPCByZXRyeUNvbnRhaW5lcnMubGVuZ3RoOwogICAgICAgICAgICAgICAgcmV0cnlJbmRleCsrCiAgICAgICAgICAgICkgewogICAgICAgICAgICAgICAgaWYgKGNvbGxlY3RvclN0b3BSZXF1ZXN0ZWQgfHwgIXVucmVzb2x2ZWRLZXlzLnNpemUpIGJyZWFrOwoKICAgICAgICAgICAgICAgIGNvbnN0IGFydGljbGUgPSByZXRyeUNvbnRhaW5lcnNbcmV0cnlJbmRleF07CiAgICAgICAgICAgICAgICBjb25zdCBwZXJtYWxpbmsgPSBnZXRQZXJtYWxpbmsoYXJ0aWNsZSk7CiAgICAgICAgICAgICAgICBjb25zdCBzb3VyY2VJZCA9IGV4dHJhY3RQb3N0SWQocGVybWFsaW5rIHx8ICcnKTsKCiAgICAgICAgICAgICAgICBsZXQgZXhpc3RpbmdLZXkgPSBudWxsOwoKICAgICAgICAgICAgICAgIGlmICgKICAgICAgICAgICAgICAgICAgICBzb3VyY2VJZCAmJgogICAgICAgICAgICAgICAgICAgIHNvdXJjZUlkVG9LZXkuaGFzKHNvdXJjZUlkKQogICAgICAgICAgICAgICAgKSB7CiAgICAgICAgICAgICAgICAgICAgZXhpc3RpbmdLZXkgPQogICAgICAgICAgICAgICAgICAgICAgICBzb3VyY2VJZFRvS2V5LmdldChzb3VyY2VJZCk7CiAgICAgICAgICAgICAgICB9IGVsc2UgewogICAgICAgICAgICAgICAgICAgIGNvbnN0IGNhbmRpZGF0ZUtleSA9CiAgICAgICAgICAgICAgICAgICAgICAgIGFyY2hpdmVJdGVtS2V5KHsgcGVybWFsaW5rIH0pOwoKICAgICAgICAgICAgICAgICAgICBpZiAoCiAgICAgICAgICAgICAgICAgICAgICAgIGNhbmRpZGF0ZUtleSAmJgogICAgICAgICAgICAgICAgICAgICAgICBtYXAuaGFzKGNhbmRpZGF0ZUtleSkKICAgICAgICAgICAgICAgICAgICApIHsKICAgICAgICAgICAgICAgICAgICAgICAgZXhpc3RpbmdLZXkgPSBjYW5kaWRhdGVLZXk7CiAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgfQoKICAgICAgICAgICAgICAgIGlmICgKICAgICAgICAgICAgICAgICAgICAhZXhpc3RpbmdLZXkgfHwKICAgICAgICAgICAgICAgICAgICAhdW5yZXNvbHZlZEtleXMuaGFzKGV4aXN0aW5nS2V5KQogICAgICAgICAgICAgICAgKSB7CiAgICAgICAgICAgICAgICAgICAgY29udGludWU7CiAgICAgICAgICAgICAgICB9CgogICAgICAgICAgICAgICAgY29uc3QgZXhpc3RpbmcgPSBtYXAuZ2V0KGV4aXN0aW5nS2V5KTsKCiAgICAgICAgICAgICAgICBpZiAoIWV4aXN0aW5nIHx8IGV4aXN0aW5nLmRhdGVJc28pIHsKICAgICAgICAgICAgICAgICAgICB1bnJlc29sdmVkS2V5cy5kZWxldGUoZXhpc3RpbmdLZXkpOwogICAgICAgICAgICAgICAgICAgIGNvbnRpbnVlOwogICAgICAgICAgICAgICAgfQoKICAgICAgICAgICAgICAgIHN0YXR1cygKICAgICAgICAgICAgICAgICAgICBgUGFzcyAyOiAke3JldHJ5SW5kZXggKyAxfS8ke3JldHJ5Q29udGFpbmVycy5sZW5ndGh9IGAgKwogICAgICAgICAgICAgICAgICAgIGAoJHt1bnJlc29sdmVkS2V5cy5zaXplfSB1bnJlc29sdmVkKWAKICAgICAgICAgICAgICAgICk7CgogICAgICAgICAgICAgICAgY29uc3QgcmV0cnlUaW1lc3RhbXAgPQogICAgICAgICAgICAgICAgICAgIGF3YWl0IHdhaXRGb3JUaW1lc3RhbXBDYW5kaWRhdGVzKAogICAgICAgICAgICAgICAgICAgICAgICBhcnRpY2xlLAogICAgICAgICAgICAgICAgICAgICAgICA4MDAKICAgICAgICAgICAgICAgICAgICApOwoKICAgICAgICAgICAgICAgIGxldCByZXRyeURhdGVJbmZvID0gewogICAgICAgICAgICAgICAgICAgIGRhdGU6IG51bGwsCiAgICAgICAgICAgICAgICAgICAgc291cmNlOiAnbWFpbiBwb3N0IHRpbWVzdGFtcCB1bnJlc29sdmVkJywKICAgICAgICAgICAgICAgICAgICBob3ZlckRlYnVnOiBbXQogICAgICAgICAgICAgIH07CgogICAgICAgICAgICAgICAgZm9yIChjb25zdCBjYW5kaWRhdGUgb2YgcmV0cnlUaW1lc3RhbXAudmFsdWVzIHx8IFtdKSB7CiAgICAgICAgICAgICAgICAgICAgY29uc3QgcGFyc2VkID0gcGFyc2VGYkRhdGUoY2FuZGlkYXRlLnZhbHVlKTsKCiAgICAgICAgICAgICAgICAgICAgaWYgKHBhcnNlZCAmJiAhaXNOYU4ocGFyc2VkKSkgewogICAgICAgICAgICAgICAgICAgICAgICByZXRyeURhdGVJbmZvID0gewogICAgICAgICAgICAgICAgICAgICAgICAgICAgZGF0ZTogcGFyc2VkLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgc291cmNlOgogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGAke2NhbmRpZGF0ZS5zb3VyY2V9OiAke2NhbmRpZGF0ZS52YWx1ZX1gLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgaG92ZXJEZWJ1ZzogW10KICAgICAgICAgICAgICAgICAgICAgICAgfTsKICAgICAgICAgICAgICAgICAgICAgICAgYnJlYWs7CiAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgfQoKICAgICAgICAgICAgICAgIGlmICgKICAgICAgICAgICAgICAgICAgICAhcmV0cnlEYXRlSW5mby5kYXRlICYmCiAgICAgICAgICAgICAgICAgICAgcmV0cnlUaW1lc3RhbXAudGltZXN0YW1wRWwgJiYKICAgICAgICAgICAgICAgICAgICByZXRyeVRpbWVzdGFtcC50aW1lc3RhbXBFbC5pc0Nvbm5lY3RlZAogICAgICAgICAgICAgICAgKSB7CiAgICAgICAgICAgICAgICAgICAgY29uc3QgaG92ZXJlZCA9CiAgICAgICAgICAgICAgICAgICAgICAgIGF3YWl0IGdldERhdGVGcm9tSG92ZXIoCiAgICAgICAgICAgICAgICAgICAgICAgICAgICByZXRyeVRpbWVzdGFtcC50aW1lc3RhbXBFbCwKICAgICAgICAgICAgICAgICAgICAgICAgICAgIDYwMAogICAgICAgICAgICAgICAgICAgICAgICApOwoKICAgICAgICAgICAgICAgICAgICBpZiAoaG92ZXJlZC5kYXRlKSB7CiAgICAgICAgICAgICAgICAgICAgICAgIHJldHJ5RGF0ZUluZm8gPSBob3ZlcmVkOwogICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgIH0KCiAgICAgICAgICAgICAgICBpZiAoIXJldHJ5RGF0ZUluZm8uZGF0ZSkgewogICAgICAgICAgICAgICAgICAgIGNvbnRpbnVlOwogICAgICAgICAgICAgICAgfQoKICAgICAgICAgICAgICAgIGNvbnN0IHJldHJ5U25hcHNob3QgPSB7CiAgICAgICAgICAgICAgICAgICAgLi4uZXhpc3RpbmcsCiAgICAgICAgICAgICAgICAgICAgZGF0ZUlzbzoKICAgICAgICAgICAgICAgICAgICAgICAgcmV0cnlEYXRlSW5mby5kYXRlLnRvSVNPU3RyaW5nKCksCiAgICAgICAgICAgICAgICAgICAgZGF0ZVNvdXJjZToKICAgICAgICAgICAgICAgICAgICAgICAgcmV0cnlEYXRlSW5mby5zb3VyY2UgfHwgJycsCiAgICAgICAgICAgICAgICAgICAgZGF0ZURlYnVnOiB7CiAgICAgICAgICAgICAgICAgICAgICAgIC4uLihleGlzdGluZy5kYXRlRGVidWcgfHwg e30pLAogICAgICAgICAgICAgICAgICAgICAgICByZXRyeVBhc3M6IHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgIGNhbmRpZGF0ZXM6CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgKHJldHJ5VGltZXN0YW1wLnZhbHVlcyB8fCBbXSkKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIC5tYXAoeCA9PiAoewogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgc291cmNlOiB4LnNvdXJjZSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHZhbHVlOiB4LnZhbHVlCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0pKSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgIGhhc1RpbWVzdGFtcEVsZW1lbnQ6CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgQm9vbGVhbigKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgcmV0cnlUaW1lc3RhbXAudGltZXN0YW1wRWwKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICApLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgaG92ZXJEZWJ1ZzoKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICByZXRyeURhdGVJbmZvLmhvdmVyRGVidWcgfHwgW10KICAgICAgICAgICAgICAgICAgICAgICAgfQogICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgIH07CgogICAgICAgICAgICAgICAgY29uc3QgbWVyZ2VkID0KICAgICAgICAgICAgICAgICAgICBtZXJnZUFyY2hpdmVJdGVtcygKICAgICAgICAgICAgICAgICAgICAgICAgZXhpc3RpbmcsCiAgICAgICAgICAgICAgICAgICAgICAgIHJldHJ5U25hcHNob3QKICAgICAgICAgICAgICAgICAgICApOwoKICAgICAgICAgICAgICAgIGNvbnN0IG5ld0tleSA9CiAgICAgICAgICAgICAgICAgICAgYXJjaGl2ZUl0ZW1LZXkobWVyZ2VkKTsKCiAgICAgICAgICAgICAgICBpZiAobmV3S2V5ICE9PSBleGlzdGluZ0tleSkgewogICAgICAgICAgICAgICAgICAgIG1hcC5kZWxldGUoZXhpc3RpbmdLZXkpOwogICAgICAgICAgICAgICAgfQoKICAgICAgICAgICAgICAgIG1hcC5zZXQobmV3S2V5LCBtZXJnZWQpOwoKICAgICAgICAgICAgICAgIGZpbmdlcnByaW50VG9LZXkuc2V0KAogICAgICAgICAgICAgICAgICAgIG1lcmdlZC5maW5nZXJwcmludCwKICAgICAgICAgICAgICAgICAgICBuZXdLZXkKICAgICAgICAgICAgICAgICk7CgogICAgICAgICAgICAgICAgY29uc3QgbWVyZ2VkU291cmNlSWQgPQogICAgICAgICAgICAgICAgICAgIGV4dHJhY3RQb3N0SWQoCiAgICAgICAgICAgICAgICAgICAgICAgIG1lcmdlZC5wZXJtYWxpbmsgfHwgJycKICAgICAgICAgICAgICAgICAgICApIHx8CiAgICAgICAgICAgICAgICAgICAgKAogICAgICAgICAgICAgICAgICAgICAgICBtZXJnZWQuaWQgJiYKICAgICAgICAgICAgICAgICAgICAgICAgIVN0cmluZyhtZXJnZWQuaWQpCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAuc3RhcnRzV2l0aCgnZnAtJykKICAgICAgICAgICAgICAgICAgICAgICAgICAgID8gU3RyaW5nKG1lcmdlZC5pZCkKICAgICAgICAgICAgICAgICAgICAgICAgICAgIDogJycKICAgICAgICAgICAgICAgICAgICApOwoKICAgICAgICAgICAgICAgIGlmIChtZXJnZWRTb3VyY2VJZCkgewogICAgICAgICAgICAgICAgICAgIHNvdXJjZUlkVG9LZXkuc2V0KAogICAgICAgICAgICAgICAgICAgICAgICBtZXJnZWRTb3VyY2VJZCwKICAgICAgICAgICAgICAgICAgICAgICAgbmV3S2V5CiAgICAgICAgICAgICAgICAgICAgKTsKICAgICAgICAgICAgICAgIH0KCiAgICAgICAgICAgICAgICB1bnJlc29sdmVkS2V5cy5kZWxldGUoZXhpc3RpbmdLZXkpOwogICAgICAgICAgICAgICAgc2Vjb25kUGFzc1JlY292ZXJlZCsrOwogICAgICAgICAgICAgICAgdXBkYXRlZENvdW50Kys7CgogICAgICAgICAgICAgICAgc2F2ZUFyY2hpdmVSYXcoCiAgICAgICAgICAgICAgICAgICAgWy4uLm1hcC52YWx1ZXMoKV0KICAgICAgICAgICAgICAgICk7CgogICAgICAgICAgICAgICAgYXJ0aWNsZS5zdHlsZS5vdXRsaW5lID0KICAgICAgICAgICAgICAgICAgICAnMnB4IHNvbGlkICMzNWE4NTMnOwogICAgICAgICAgICAgICAgYXJ0aWNsZS5kYXRhc2V0LmZid3AgPQogICAgICAgICAgICAgICAgICAgICdjb2xsZWN0ZWQtcGFzczInOwogICAgICAgICAgICB9CgogICAgICAgICAgICBpZiAoc2Vjb25kUGFzc1JlY292ZXJlZCkgewogICAgICAgICAgICAgICAgbG9nKAogICAgICAgICAgICAgICAgICAgIGBQYXNzIDIgcmVjb3ZlcmVkICR7c2Vjb25kUGFzc1JlY292ZXJlZH0gdW5yZXNvbHZlZCBwb3N0KHMpLmAKICAgICAgICAgICAgICAgICk7CiAgICAgICAgICAgIH0KICAgICAgICB9CgonnJycgKyBtYXJrZXIKCmJsb2NrID0gYmxvY2sucmVwbGFjZShtYXJrZXIsIHNlY29uZF9wYXNzLCAxKQoKb2xkX3JldHVybiA9ICcnJyAgICAgICAgICAgIHVucmVzb2x2ZWRDb3VudDogYWN0dWFsVW5yZXNvbHZlZCwKICAgICAgICAgICAgcmVwYWlyZWRFeGFjdFRleHQsCiAgICAgICAgICAgIG9sZGVyQ291bnQsJycnCm5ld19yZXR1cm4gPSAnJycgICAgICAgICAgICB1bnJlc29sdmVkQ291bnQ6IGFjdHVhbFVueZXNvbHZlZCwKICAgICAgICAgICAgc2Vjb25kUGFzc1JlY292ZXJlZCwKICAgICAgICAgICAgcmVwYWlyZWRFeGFjdFRleHQsCiAgICAgICAgICAgIG9sZGVyQ291bnQsJycnCmlmIG9sZF9yZXR1cm4gbm90IGluIGJsb2NrOgogICAgcmFpc2UgU3lzdGVtRXhpdCgnUmV0dXJuIGJsb2NrIG5vdCBmb3VuZCcpCmJsb2NrID0gYmxvY2sucmVwbGFjZShvbGRfcmV0dXJuLCBuZXdfcmV0dXJuLCAxKQoKc3JjID0gc3JjWzpjb2xsZWN0X3N0YXJ0XSArIGJsb2NrICsgc3JjW2NvbGxlY3RfZW5kOl0KCmlmICdjb25zdCBWRVJTSU9OID0gU3RyaW5nKEdNX2luZm8uc2NyaXB0LnZlcnNpb24pOycgbm90IGluIHNyYzoKICAgIHJhaXNlIFN5c3RlbUV4aXQoJ1NpbmdsZSB2ZXJzaW9uIHNvdXJjZSBtaXNzaW5nJykKaWYgJ1Bhc3MgMiByZWNvdmVyZWQnIG5vdCBpbiBzcmM6CiAgICByYWlzZSBTeXN0ZW1FeGl0KCdTZWNvbmQgcGFzcyBtaXNzaW5nJykKaWYgJ3dhaXRGb3JUaW1lc3RhbXBDYW5kaWRhdGVzKGFydGljbGUsIHRpbWVvdXRNcyA9IDQwMCknIG5vdCBpbiBzcmM6CiAgICByYWlzZSBTeXN0ZW1FeGl0KCdTaG9ydCBwYXNzLTEgdGltZXN0YW1wIHdhaXQgbWlzc2luZycpCmlmICdnZXREYXRlRnJvbUhvdmVyKHRpbWVzdGFtcEVsLCB0aW1lb3V0TXMgPSA2MDApJyBub3QgaW4gc3JjOgogICAgcmFpc2UgU3lzdGVtRXhpdCgnQm91bmRlZCBob3ZlciBmYWxsYmFjayBtaXNzaW5nJykKCnJ1bnRpbWVfd2l0aG91dF9tZXRhZGF0YSA9IHJlLnN1YigKICAgIHInXi8vIEB2ZXJzaW9uXFxzKy4qJCcsCiAgICAnJywKICAgIHNyYywKICAgIGNvdW50PTEsCiAgICBmbGFncz1yZS5NCikKc3RhbGUgPSByZS5maW5kYWxsKAogICAgcidcXGJ2XFxkK1xcLlxcZCsoPzpcXC5cXGQrKT9cXGInLAogICAgcnVudGltZV93aXRob3V0X21ldGFkYXRhCikKaWYgc3RhbGU6CiAgICByYWlzZSBTeXN0ZW1FeGl0KAogICAgICAgIGYnSGFyZC1jb2RlZCBjb2xsZWN0b3IgdmVyc2lvbiBzdHJpbmdzIHJlbWFpbjoge3N0YWxlWzoxMF19JwogICAgKQoKcGF0aC53cml0ZV90ZXh0KHNyYywgZW5jb2Rpbmc9J3V0Zi04JykK'))"
+          python3 <<'PY'
+          
+          from pathlib import Path
+          import re
+          
+          path = Path('tampermonkey/facebook-posts-to-wordpress.user.js')
+          src = path.read_text(encoding='utf-8')
+          
+          old_version = '// @version      1.4.14'
+          new_version = '// @version      1.4.15'
+          if old_version not in src:
+              raise SystemExit('Expected collector version 1.4.14 not found')
+          src = src.replace(old_version, new_version, 1)
+          
+          old_wait = '''    async function waitForTimestampCandidates(article, timeoutMs = 1600) {
+              const started = Date.now();
+              let last = { values: [], timestampEl: null };
+          
+              try {
+                  article.scrollIntoView({
+                      block: 'center',
+                      inline: 'nearest'
+                  });
+              } catch (_) {}
+          
+              // Give Facebook a moment to hydrate the header for this post.
+              await new Promise(resolve => setTimeout(resolve, 220));
+          
+              while (Date.now() - started < timeoutMs) {
+                  last = collectMainTimestampCandidates(article);
+          
+                  if (last.values.length) {
+                      return last;
+                  }
+          
+                  await new Promise(resolve => setTimeout(resolve, 160));
+              }
+          
+              return last;
+          }'''
+          new_wait = '''    async function waitForTimestampCandidates(article, timeoutMs = 400) {
+              const started = Date.now();
+              let last = { values: [], timestampEl: null };
+          
+              try {
+                  article.scrollIntoView({
+                      block: 'center',
+                      inline: 'nearest'
+                  });
+              } catch (_) {}
+          
+              // Short hydration window. A second pass handles misses.
+              await new Promise(resolve => setTimeout(resolve, 80));
+          
+              while (Date.now() - started < timeoutMs) {
+                  last = collectMainTimestampCandidates(article);
+          
+                  if (last.values.length) {
+                      return last;
+                  }
+          
+                  await new Promise(resolve => setTimeout(resolve, 80));
+              }
+          
+              return last;
+          }'''
+          if old_wait not in src:
+              raise SystemExit('waitForTimestampCandidates block not found')
+          src = src.replace(old_wait, new_wait, 1)
+          
+          hover_start = src.find('    async function getDateFromHover(timestampEl) {')
+          hover_end = src.find('\n    async function extractDate(article) {', hover_start)
+          if hover_start < 0 or hover_end < 0:
+              raise SystemExit('getDateFromHover block not found')
+          
+          new_hover = r'''    async function getDateFromHover(timestampEl, timeoutMs = 600) {
+              if (!timestampEl) {
+                  return { date: null, source: '', hoverDebug: [] };
+              }
+          
+              const observed = new Set();
+              const baseline = new Set(collectTooltipTexts());
+              const existingTooltips = new Set(
+                  [...document.querySelectorAll('[role="tooltip"]')]
+              );
+          
+              function addValue(value) {
+                  const t = String(value || '')
+                      .replace(/\u202f/g, ' ')
+                      .trim();
+          
+                  if (
+                      t &&
+                      t.length <= 240 &&
+                      looksLikeDateText(t) &&
+                      !baseline.has(t)
+                  ) {
+                      observed.add(t);
+                  }
+              }
+          
+              function collectFromElement(el) {
+                  if (!(el instanceof Element)) return;
+          
+                  for (const v of [
+                      el.getAttribute?.('aria-label'),
+                      el.getAttribute?.('title'),
+                      el.innerText,
+                      el.textContent
+                  ]) {
+                      addValue(v);
+                  }
+              }
+          
+              const observer = new MutationObserver(mutations => {
+                  for (const mutation of mutations) {
+                      for (const node of mutation.addedNodes) {
+                          if (!(node instanceof Element)) continue;
+          
+                          const candidates = [];
+          
+                          if (
+                              node.matches?.(
+                                  '[role="tooltip"], [data-visualcompletion="ignore-dynamic"], [aria-live="polite"]'
+                              )
+                          ) {
+                              candidates.push(node);
+                          }
+          
+                          candidates.push(...(
+                              node.querySelectorAll?.(
+                                  '[role="tooltip"], [data-visualcompletion="ignore-dynamic"], [aria-live="polite"]'
+                              ) || []
+                          ));
+          
+                          for (const el of candidates) {
+                              if (
+                                  el.matches?.('[role="tooltip"]') &&
+                                  existingTooltips.has(el)
+                              ) {
+                                  continue;
+                              }
+          
+                              collectFromElement(el);
+                          }
+                      }
+                  }
+              });
+          
+              observer.observe(document.body, {
+                  childList: true,
+                  subtree: true
+              });
+          
+              function collectNewTooltipTexts() {
+                  for (const value of collectTooltipTexts()) {
+                      addValue(value);
+                  }
+              }
+          
+              dispatchHover(timestampEl);
+          
+              const started = Date.now();
+          
+              while (Date.now() - started < timeoutMs) {
+                  collectNewTooltipTexts();
+          
+                  for (const candidate of observed) {
+                      const d = parseFbDate(candidate);
+          
+                      if (d && !isNaN(d)) {
+                          observer.disconnect();
+                          dispatchUnhover(timestampEl);
+          
+                          return {
+                              date: d,
+                              source: 'main timestamp tooltip: ' + candidate,
+                              hoverDebug: [...observed].slice(0, 8)
+                          };
+                      }
+                  }
+          
+                  await new Promise(resolve => setTimeout(resolve, 80));
+                  dispatchHover(timestampEl);
+              }
+          
+              observer.disconnect();
+              dispatchUnhover(timestampEl);
+              collectNewTooltipTexts();
+          
+              for (const candidate of observed) {
+                  const d = parseFbDate(candidate);
+          
+                  if (d && !isNaN(d)) {
+                      return {
+                          date: d,
+                          source: 'main timestamp tooltip: ' + candidate,
+                          hoverDebug: [...observed].slice(0, 8)
+                      };
+                  }
+              }
+          
+              return {
+                  date: null,
+                  source: [...observed].slice(0, 5).join(' | '),
+                  hoverDebug: [...observed].slice(0, 8)
+              };
+          }
+          '''
+          src = src[:hover_start] + new_hover + src[hover_end:]
+          
+          collect_start = src.find('    async function collectVisiblePosts(cutoffDate) {')
+          collect_end = src.find('\n    function waitForFeedChange(', collect_start)
+          if collect_start < 0 or collect_end < 0:
+              raise SystemExit('collectVisiblePosts block not found')
+          
+          block = src[collect_start:collect_end]
+          
+          if block.count('article,\n      1600') != 1:
+              raise SystemExit('Expected one pre-expand 1600 wait')
+          block = block.replace('article,\n      1600', 'article,\n      400', 1)
+          
+          if block.count('article,\n                1600') != 1:
+              raise SystemExit('Expected one post-expand 1600 wait')
+          block = block.replace('article,\n                1600', 'article,\n                400', 1)
+          
+          pre_hover = '''  if (
+              !dateBeforeExpand.date &&
+              timestampBeforeExpand.timestampEl &&
+              timestampBeforeExpand.timestampEl.isConnected
+          ) {
+              const hovered = await getDateFromHover(
+                  timestampBeforeExpand.timestampEl
+              );
+          
+              if (hovered.date) {
+                  dateBeforeExpand = hovered;
+              }
+          }
+          
+          '''
+          if pre_hover not in block:
+              raise SystemExit('Pre-expand hover block not found')
+          block = block.replace(pre_hover, '', 1)
+          
+          post_hover = '''            if (!dateInfo.date && timestampDebug.timestampEl) {
+                          const hovered = await getDateFromHover(
+                              timestampDebug.timestampEl
+                          );
+          
+                          if (hovered.date) {
+                              dateInfo = hovered;
+                          }
+                      }
+          '''
+          if post_hover not in block:
+              raise SystemExit('Post-expand hover block not found')
+          block = block.replace(post_hover, '', 1)
+          
+          marker = '''        const repairedExactText =
+                      repairUnresolvedExactTextDuplicates(
+                          map
+                      );
+          '''
+          if marker not in block:
+              raise SystemExit('Second-pass insertion marker not found')
+          
+          second_pass = r'''        /*
+                   * PASS 2:
+                   * Retry ONLY archive entries that are still unresolved and are still
+                   * mounted in the current Facebook DOM. Existing dated entries are never
+                   * touched and no duplicate archive item is created.
+                   */
+                  let secondPassRecovered = 0;
+          
+                  const unresolvedKeys = new Set(
+                      [...map.entries()]
+                          .filter(([, item]) => !item.dateIso)
+                          .map(([key]) => key)
+                  );
+          
+                  if (unresolvedKeys.size) {
+                      status(
+                          `Pass 2: retrying ${unresolvedKeys.size} unresolved post(s)...`
+                      );
+          
+                      const retryContainers =
+                          getPostContainers().filter(isTargetPost);
+          
+                      for (
+                          let retryIndex = 0;
+                          retryIndex < retryContainers.length;
+                          retryIndex++
+                      ) {
+                          if (collectorStopRequested || !unresolvedKeys.size) break;
+          
+                          const article = retryContainers[retryIndex];
+                          const permalink = getPermalink(article);
+                          const sourceId = extractPostId(permalink || '');
+          
+                          let existingKey = null;
+          
+                          if (
+                              sourceId &&
+                              sourceIdToKey.has(sourceId)
+                          ) {
+                              existingKey =
+                                  sourceIdToKey.get(sourceId);
+                          } else {
+                              const candidateKey =
+                                  archiveItemKey({ permalink });
+          
+                              if (
+                                  candidateKey &&
+                                  map.has(candidateKey)
+                              ) {
+                                  existingKey = candidateKey;
+                              }
+                          }
+          
+                          if (
+                              !existingKey ||
+                              !unresolvedKeys.has(existingKey)
+                          ) {
+                              continue;
+                          }
+          
+                          const existing = map.get(existingKey);
+          
+                          if (!existing || existing.dateIso) {
+                              unresolvedKeys.delete(existingKey);
+                              continue;
+                          }
+          
+                          status(
+                              `Pass 2: ${retryIndex + 1}/${retryContainers.length} ` +
+                              `(${unresolvedKeys.size} unresolved)`
+                          );
+          
+                          const retryTimestamp =
+                              await waitForTimestampCandidates(
+                                  article,
+                                  800
+                              );
+          
+                          let retryDateInfo = {
+                              date: null,
+                              source: 'main post timestamp unresolved',
+                              hoverDebug: []
+                          };
+          
+                          for (const candidate of retryTimestamp.values || []) {
+                              const parsed = parseFbDate(candidate.value);
+          
+                              if (parsed && !isNaN(parsed)) {
+                                  retryDateInfo = {
+                                      date: parsed,
+                                      source:
+                                          `${candidate.source}: ${candidate.value}`,
+                                      hoverDebug: []
+                                  };
+                                  break;
+                              }
+                          }
+          
+                          if (
+                              !retryDateInfo.date &&
+                              retryTimestamp.timestampEl &&
+                              retryTimestamp.timestampEl.isConnected
+                          ) {
+                              const hovered =
+                                  await getDateFromHover(
+                                      retryTimestamp.timestampEl,
+                                      600
+                                  );
+          
+                              if (hovered.date) {
+                                  retryDateInfo = hovered;
+                              }
+                          }
+          
+                          if (!retryDateInfo.date) {
+                              continue;
+                          }
+          
+                          const retrySnapshot = {
+                              ...existing,
+                              dateIso:
+                                  retryDateInfo.date.toISOString(),
+                              dateSource:
+                                  retryDateInfo.source || '',
+                              dateDebug: {
+                                  ...(existing.dateDebug || {}),
+                                  retryPass: {
+                                      candidates:
+                                          (retryTimestamp.values || [])
+                                              .map(x => ({
+                                                  source: x.source,
+                                                  value: x.value
+                                              })),
+                                      hasTimestampElement:
+                                          Boolean(
+                                              retryTimestamp.timestampEl
+                                          ),
+                                      hoverDebug:
+                                          retryDateInfo.hoverDebug || []
+                                  }
+                              }
+                          };
+          
+                          const merged =
+                              mergeArchiveItems(
+                                  existing,
+                                  retrySnapshot
+                              );
+          
+                          const newKey =
+                              archiveItemKey(merged);
+          
+                          if (newKey !== existingKey) {
+                              map.delete(existingKey);
+                          }
+          
+                          map.set(newKey, merged);
+          
+                          fingerprintToKey.set(
+                              merged.fingerprint,
+                              newKey
+                          );
+          
+                          const mergedSourceId =
+                              extractPostId(
+                                  merged.permalink || ''
+                              ) ||
+                              (
+                                  merged.id &&
+                                  !String(merged.id)
+                                      .startsWith('fp-')
+                                      ? String(merged.id)
+                                      : ''
+                              );
+          
+                          if (mergedSourceId) {
+                              sourceIdToKey.set(
+                                  mergedSourceId,
+                                  newKey
+                              );
+                          }
+          
+                          unresolvedKeys.delete(existingKey);
+                          secondPassRecovered++;
+                          updatedCount++;
+          
+                          saveArchiveRaw(
+                              [...map.values()]
+                          );
+          
+                          article.style.outline =
+                              '2px solid #35a853';
+                          article.dataset.fbwp =
+                              'collected-pass2';
+                      }
+          
+                      if (secondPassRecovered) {
+                          log(
+                              `Pass 2 recovered ${secondPassRecovered} unresolved post(s).`
+                          );
+                      }
+                  }
+          
+          ''' + marker
+          
+          block = block.replace(marker, second_pass, 1)
+          
+          old_return = '''            unresolvedCount: actualUnresolved,
+                      repairedExactText,
+                      olderCount,'''
+          new_return = '''            unresolvedCount: actualUnresolved,
+                      secondPassRecovered,
+                      repairedExactText,
+                      olderCount,'''
+          if old_return not in block:
+              raise SystemExit('Return block not found')
+          block = block.replace(old_return, new_return, 1)
+          
+          src = src[:collect_start] + block + src[collect_end:]
+          
+          if 'const VERSION = String(GM_info.script.version);' not in src:
+              raise SystemExit('Single version source missing')
+          if 'Pass 2 recovered' not in src:
+              raise SystemExit('Second pass missing')
+          if 'waitForTimestampCandidates(article, timeoutMs = 400)' not in src:
+              raise SystemExit('Short pass-1 timestamp wait missing')
+          if 'getDateFromHover(timestampEl, timeoutMs = 600)' not in src:
+              raise SystemExit('Bounded hover fallback missing')
+          
+          runtime_without_metadata = re.sub(
+              r'^// @version\s+.*$',
+              '',
+              src,
+              count=1,
+              flags=re.M
+          )
+          stale = re.findall(
+              r'\bv\d+\.\d+(?:\.\d+)?\b',
+              runtime_without_metadata
+          )
+          if stale:
+              raise SystemExit(
+                  f'Hard-coded collector version strings remain: {stale[:10]}'
+              )
+          
+          path.write_text(src, encoding='utf-8')
+          PY
           node --check tampermonkey/facebook-posts-to-wordpress.user.js
 
       - name: Commit
