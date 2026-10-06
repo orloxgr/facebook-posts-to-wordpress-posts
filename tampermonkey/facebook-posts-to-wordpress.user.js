@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Facebook Page to WordPress Collector
 // @namespace    iniotakis-tools
-// @version      1.4.9
+// @version      1.4.10
 // @description  Collect Facebook Page posts to JSON for WordPress import, preserving source dates, text and photos.
 // @updateURL    https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/facebook-posts-to-wordpress.user.js
 // @downloadURL  https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/facebook-posts-to-wordpress.user.js
@@ -385,6 +385,21 @@
             ? bDate
             : aDate;
 
+        /*
+         * Keep timestamp diagnostics for unresolved incoming snapshots.
+         * Previously mergeArchiveItems({}, snapshot) discarded dateSource/dateDebug
+         * whenever b.dateIso was null, which made unresolved posts impossible to
+         * diagnose after export. A dated existing item still keeps its own
+         * diagnostics when merged with a later unresolved snapshot.
+         */
+        const incomingHasDateDiagnostics =
+            Boolean(b.dateSource) ||
+            b.dateDebug != null;
+
+        const useIncomingDateDiagnostics =
+            chooseIncomingDate ||
+            (!aDate && incomingHasDateDiagnostics);
+
         const aPermalink =
             canonicalFbPostUrl(a.permalink || '');
         const bPermalink =
@@ -487,14 +502,14 @@
             dateIso: chosenDate,
 
             dateSource:
-                chooseIncomingDate
+                useIncomingDateDiagnostics
                     ? (b.dateSource || '')
                     : (a.dateSource || ''),
 
             dateDebug:
-                chooseIncomingDate
-                    ? (b.dateDebug || null)
-                    : (a.dateDebug || null),
+                useIncomingDateDiagnostics
+                    ? (b.dateDebug ?? null)
+                    : (a.dateDebug ?? null),
 
             collectedAt:
                 a.collectedAt ||
