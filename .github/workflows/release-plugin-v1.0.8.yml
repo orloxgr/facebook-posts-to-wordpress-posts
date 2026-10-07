@@ -1,0 +1,87 @@
+name: Release WordPress plugin v1.0.8
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.event.head_commit.message == 'Release WordPress plugin v1.0.8'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: PHP syntax check
+        shell: bash
+        run: |
+          set -euo pipefail
+          find wordpress-plugin/facebook-posts-to-wordpress -name '*.php' -print0 | xargs -0 -n1 php -l
+
+      - name: JavaScript syntax check
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check wordpress-plugin/facebook-posts-to-wordpress/assets/admin.js
+
+      - name: Ensure plugin is generic
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -RniE 'dimos\.alonnisou|alonissos\.gov\.gr|Δήμος Αλοννήσου|Δελτία Τύπου - Νέα - Ανακοινώσεις|alonissos_fbwp_' wordpress-plugin/facebook-posts-to-wordpress
+
+      - name: Verify plugin metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '^ \* Plugin Name: Facebook Posts to WordPress Posts$' wordpress-plugin/facebook-posts-to-wordpress/facebook-posts-to-wordpress.php
+          grep -q '^ \* Version: 1.0.8$' wordpress-plugin/facebook-posts-to-wordpress/facebook-posts-to-wordpress.php
+          grep -q '^ \* Author: Byron Iniotakis$' wordpress-plugin/facebook-posts-to-wordpress/facebook-posts-to-wordpress.php
+          grep -q '^ \* Author URI: https://iniotakis.com/$' wordpress-plugin/facebook-posts-to-wordpress/facebook-posts-to-wordpress.php
+          grep -q "const FBWP_VERSION = '1.0.8';" wordpress-plugin/facebook-posts-to-wordpress/facebook-posts-to-wordpress.php
+          grep -q "require_once __DIR__ . '/includes/admin.php';" wordpress-plugin/facebook-posts-to-wordpress/facebook-posts-to-wordpress.php
+
+      - name: Build plugin ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd wordpress-plugin
+          zip -qr ../facebook-posts-to-wordpress-v1.0.8.zip facebook-posts-to-wordpress
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release create plugin-v1.0.8 \
+            facebook-posts-to-wordpress-v1.0.8.zip \
+            --title 'WordPress Plugin v1.0.8' \
+            --notes 'Plugin-only release. Changes the WordPress plugin author metadata to Byron Iniotakis and links the author name to https://iniotakis.com/. No importer behavior changes.'
+
+      - name: Remove old plugin releases and tags
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          for tag in \
+            plugin-v1.0.0 \
+            plugin-v1.0.1 \
+            plugin-v1.0.2 \
+            plugin-v1.0.3 \
+            plugin-v1.0.4 \
+            plugin-v1.0.5 \
+            plugin-v1.0.6 \
+            plugin-v1.0.7
+          do
+            if gh release view "$tag" >/dev/null 2>&1; then
+              gh release delete "$tag" --cleanup-tag -y
+            else
+              git push origin ":refs/tags/$tag" 2>/dev/null || true
+            fi
+          done
