@@ -1,0 +1,38 @@
+name: Collector v1.4.17
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/patch-v1.4.17.py'
+      - '.github/workflows/collector-v1.4.17.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch collector
+        run: |
+          python3 .github/patch-v1.4.17.py
+          node --check tampermonkey/facebook-posts-to-wordpress.user.js
+      - name: Verify changes
+        run: |
+          set -euo pipefail
+          grep -q '^// @version      1.4.17$' tampermonkey/facebook-posts-to-wordpress.user.js
+          grep -q '^// @run-at       document-start$' tampermonkey/facebook-posts-to-wordpress.user.js
+          grep -q '^// @grant        unsafeWindow$' tampermonkey/facebook-posts-to-wordpress.user.js
+          grep -q 'FBWP_CAPTURED_SHADOW_ROOTS' tampermonkey/facebook-posts-to-wordpress.user.js
+          grep -q 'collectCapturedShadowDateStrings' tampermonkey/facebook-posts-to-wordpress.user.js
+      - name: Commit
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add tampermonkey/facebook-posts-to-wordpress.user.js
+          git diff --cached --quiet && exit 0
+          git commit -m 'Capture Facebook closed shadow-root timestamps'
+          git push origin HEAD:main
