@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Facebook Page to WordPress Collector
 // @namespace    iniotakis-tools
-// @version      1.4.17
+// @version      1.4.18
 // @description  Collect Facebook Page posts to JSON for WordPress import, preserving source dates, text and photos.
 // @updateURL    https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/facebook-posts-to-wordpress.user.js
 // @downloadURL  https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/facebook-posts-to-wordpress.user.js
@@ -1948,7 +1948,10 @@
             if (!isNaN(d)) return d;
         }
 
-        let s = normalize(value).replace(/\u202f/g, ' ');
+        let s = normalize(value)
+            .replace(/[\u200B-\u200F\u2060\uFEFF]/g, '')
+            .replace(/\u202f/g, ' ')
+            .trim();
 
         // Relative Facebook timestamps are calculated from the browser's
         // current LOCAL date/time. If the original clock time is unknown,
