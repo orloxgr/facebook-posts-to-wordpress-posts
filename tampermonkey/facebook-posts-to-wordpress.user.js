@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Facebook Page to WordPress Collector
 // @namespace    iniotakis-tools
-// @version      1.4.16
+// @version      1.4.17
 // @description  Collect Facebook Page posts to JSON for WordPress import, preserving source dates, text and photos.
 // @updateURL    https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/facebook-posts-to-wordpress.user.js
 // @downloadURL  https://raw.githubusercontent.com/orloxgr/facebook-posts-to-wordpress-posts/main/tampermonkey/facebook-posts-to-wordpress.user.js
@@ -12,15 +12,67 @@
 // @grant        GM_setValue
 // @grant        GM_deleteValue
 // @grant        GM_info
+// @grant        unsafeWindow
 // @connect      *
 // @connect      *.fbcdn.net
 // @connect      facebook.com
 // @connect      www.facebook.com
-// @run-at       document-idle
+// @run-at       document-start
 // ==/UserScript==
 
 (function () {
     'use strict';
+
+    /*
+     * Facebook renders timestamp text inside closed shadow roots on some posts.
+     * DevTools can display those roots, but normal DOM APIs cannot read them.
+     * Install the hook at document-start and keep the returned ShadowRoot in a
+     * private WeakMap without changing Facebook's requested open/closed mode.
+     */
+    const FBWP_CAPTURED_SHADOW_ROOTS = new WeakMap();
+
+    (function installShadowRootCapture() {
+        try {
+            const pageWindow =
+                typeof unsafeWindow !== 'undefined'
+                    ? unsafeWindow
+                    : window;
+
+            const proto = pageWindow?.Element?.prototype;
+            const originalAttachShadow = proto?.attachShadow;
+
+            if (
+                !proto ||
+                typeof originalAttachShadow !== 'function' ||
+                proto.__fbwpShadowCaptureInstalled
+            ) {
+                return;
+            }
+
+            const wrappedAttachShadow = function(init) {
+                const root = originalAttachShadow.call(this, init);
+
+                try {
+                    FBWP_CAPTURED_SHADOW_ROOTS.set(this, root);
+                } catch (_) {}
+
+                return root;
+            };
+
+            Object.defineProperty(proto, 'attachShadow', {
+                configurable: true,
+                writable: true,
+                value: wrappedAttachShadow
+            });
+
+            Object.defineProperty(proto, '__fbwpShadowCaptureInstalled', {
+                configurable: true,
+                value: true
+            });
+        } catch (e) {
+            console.warn('[FB→WP] Shadow-root capture hook unavailable:', e);
+        }
+    })();
 
     // Runtime version always comes from the single @version metadata field above.
     const VERSION = String(GM_info.script.version);
@@ -1717,6 +1769,84 @@
         );
     }
 
+    function getCapturedShadowRoot(host) {
+        if (!host) return null;
+
+        try {
+            return (
+                host.shadowRoot ||
+                FBWP_CAPTURED_SHADOW_ROOTS.get(host) ||
+                null
+            );
+        } catch (_) {
+            return null;
+        }
+    }
+
+    function collectCapturedShadowDateStrings(el) {
+        const values = new Set();
+        const seenRoots = new Set();
+        const seenHosts = new Set();
+
+        if (!el) return [];
+
+        function add(value) {
+            const v = String(value || '')
+                .replace(/\u202f/g, ' ')
+                .trim();
+
+            if (v && v.length <= 240) {
+                values.add(v);
+            }
+        }
+
+        function visitHost(host, depth = 0) {
+            if (
+                !host ||
+                depth > 5 ||
+                seenHosts.has(host)
+            ) {
+                return;
+            }
+
+            seenHosts.add(host);
+
+            const root = getCapturedShadowRoot(host);
+            if (!root || seenRoots.has(root)) return;
+
+            seenRoots.add(root);
+
+            add(root.textContent);
+
+            const nodes = [
+                ...root.querySelectorAll('*')
+            ].slice(0, 160);
+
+            for (const node of nodes) {
+                add(node.getAttribute?.('aria-label'));
+                add(node.getAttribute?.('title'));
+                add(node.getAttribute?.('datetime'));
+
+                const utime = node.getAttribute?.('data-utime');
+                if (utime) add('UTIME:' + utime);
+
+                add(node.textContent);
+
+                visitHost(node, depth + 1);
+            }
+        }
+
+        visitHost(el, 0);
+
+        for (const host of [
+            ...el.querySelectorAll?.('*') || []
+        ].slice(0, 160)) {
+            visitHost(host, 0);
+        }
+
+        return [...values];
+    }
+
     function collectElementDateStrings(el) {
         const values = new Set();
         if (!el) return [];
@@ -1750,6 +1880,10 @@
             }
 
             add(child.textContent);
+        }
+
+        for (const shadowValue of collectCapturedShadowDateStrings(el)) {
+            add(shadowValue);
         }
 
         return [...values];
